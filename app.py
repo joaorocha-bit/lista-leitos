@@ -13,7 +13,9 @@ def carregar_dados():
     try:
         response = requests.get(URL)
         response.raise_for_status()
-        df_raw = pd.read_csv(StringIO(response.text))
+        
+        # O SEGREDO ESTÁ AQUI: Especificamos encoding='utf-8' para ler acentos e símbolos corretamente
+        df_raw = pd.read_csv(StringIO(response.text), encoding='utf-8')
         
         # Mapeamento pelas letras das colunas: A, B, C, F, J
         df_final = pd.DataFrame()
@@ -23,9 +25,9 @@ def carregar_dados():
         df_final['PARA'] = df_raw.iloc[:, 5]          # Coluna F
         df_final['TIPO'] = df_raw.iloc[:, 9]          # Coluna J
         
-        # Status na Coluna K (ou padrão VERDE)
+        # Status
         if df_raw.shape[1] > 10:
-            df_final['STATUS'] = df_raw.iloc[:, 10].fillna('VERDE').str.upper()
+            df_final['STATUS'] = df_raw.iloc[:, 10].fillna('VERDE').astype(str).str.upper()
         else:
             df_final['STATUS'] = 'VERDE'
 
@@ -33,7 +35,7 @@ def carregar_dados():
     except Exception as e:
         st.error(f"Erro ao carregar planilha: {e}")
         return None
-
+        
 # Estilização CSS para os Cards
 st.markdown("""
     <style>
