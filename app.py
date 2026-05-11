@@ -20,23 +20,22 @@ def carregar_dados():
         # Lê o conteúdo
         df_raw = pd.read_csv(StringIO(conteudo_limpo))
         
-        # Mapeamento das colunas:
+        # Mapeamento das colunas (A=0, B=1, C=2, F=5, J=9)
         df_final = pd.DataFrame()
-        df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)         # Coluna A
-        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)       # Coluna B
-        df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2].astype(str) # Coluna C
-        df_final['PARA'] = df_raw.iloc[:, 5].astype(str)          # Coluna F
-        df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)          # Coluna J
+        df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)
+        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)
+        df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2].astype(str)
+        df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
+        df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
         
         # STATUS na Coluna V (Índice 21)
-        # Verificamos se a planilha tem colunas suficientes para chegar na V
+        # Se estiver vazia (NaN), preenche com 'CINZA'
         if df_raw.shape[1] >= 22: 
-            df_final['STATUS'] = df_raw.iloc[:, 21].fillna('VERDE').astype(str).str.upper().str.strip()
+            df_final['STATUS'] = df_raw.iloc[:, 21].fillna('CINZA').astype(str).str.upper().str.strip()
         else:
-            # Caso a coluna V não exista ou esteja fora do alcance
             df_final['STATUS'] = 'CINZA'
 
-        # Limpeza final de espaços em branco
+        # Limpeza final de espaços em branco nos textos
         df_final = df_final.map(lambda x: x.strip() if isinstance(x, str) else x)
 
         return df_final
