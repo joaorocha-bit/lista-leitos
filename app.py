@@ -2,10 +2,9 @@ import pandas as pd
 import streamlit as st
 import requests
 from io import StringIO
-import streamlit.components.v1 as components
 
-# 1. Configuração da página
-st.set_page_config(page_title="Painel de Leitos Hospitalar", layout="wide")
+# 1. Configuração da página - o layout wide é o ponto de partida
+st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
@@ -34,88 +33,132 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return None
 
-# 2. CSS que será injetado dentro do componente de HTML
-CSS_CARDS = """
-<style>
-    .painel-geral {
-        display: flex;
-        flex-direction: column;
-        font-family: sans-serif;
-        gap: 15px;
+# 2. CSS PARA TRAVAR COLUNA E PERMITIR SCROLL GLOBAL
+st.markdown("""
+    <style>
+    /* Remove os limites de largura do Streamlit para o scroll ser na página toda */
+    .main .block-container {
+        max-width: none !important;
+        width: 100% !important;
+        padding: 1rem 0rem 5rem 0rem !important;
+        overflow-x: visible !important;
     }
-    .linha-unidade {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        align-items: center;
+    
+    /* Container que força a largura conforme o conteúdo */
+    .painel-container {
+        display: inline-block !important;
+        min-width: 100%;
+        background-color: white;
     }
-    .label-unidade {
-        width: 200px;
-        min-width: 200px;
-        font-weight: bold;
-        font-size: 14px;
-        color: #334155;
+
+    /* Linha de cada unidade */
+    .linha-hospital {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: stretch !important;
+        border-bottom: 1px solid #f0f2f6;
+    }
+
+    /* COLUNA TRAVADA (STICKY) */
+    .coluna-unidade-fixa {
+        position: -webkit-sticky; /* Suporte Safari */
         position: sticky;
         left: 0;
-        background: white;
-        z-index: 10;
-        border-right: 2px solid #f1f5f9;
-    }
-    .cards-wrapper {
+        z-index: 999;
+        background-color: #ffffff;
+        min-width: 180px;
+        width: 180px;
+        padding: 15px;
+        box-shadow: 5px 0 10px -5px rgba(0,0,0,0.1); /* Sombra para não sobrepor visualmente */
         display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
+        flex-direction: column;
+        justify-content: center;
+        border-right: 1px solid #e6e9ef;
+    }
+
+    .nome-unidade { font-size: 13px; font-weight: bold; color: #1e293b; margin: 0; }
+    .nome-especialidade { font-size: 11px; color: #64748b; margin: 0; }
+
+    /* ÁREA DOS CARDS */
+    .wrapper-leitos {
+        display: flex !important;
         gap: 8px;
-        padding-left: 10px;
+        padding: 10px 20px;
     }
-    .card-leito {
-        flex: 0 0 100px;
-        width: 100px;
-        background: white;
+
+    .card-hospitalar {
+        flex: 0 0 110px !important; /* Tamanho fixo e confortável */
+        width: 110px !important;
+        background: #fff;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 10px 5px;
+        border-radius: 8px;
+        padding: 12px 5px;
         text-align: center;
-        box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
     }
-    .txt-num { font-size: 14px; font-weight: bold; color: #1e293b; }
-    .txt-tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
-    .status-bar { height: 8px; border-radius: 4px; margin-top: 8px; }
-</style>
-"""
+    
+    .card-hospitalar:hover { border-color: #cbd5e1; }
+
+    .leito-id { font-size: 14px; font-weight: 800; color: #0f172a; margin-bottom: 2px; }
+    .leito-tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600; }
+    .indicador-status { height: 6px; border-radius: 3px; margin-top: 8px; width: 80%; margin-left: 10%; }
+
+    /* Ajuste para o título não sumir ao rolar */
+    .titulo-painel {
+        position: sticky;
+        left: 0;
+        padding: 20px;
+        background: white;
+        z-index: 1000;
+        width: 100vw;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 df = carregar_dados()
 
 if df is not None:
-    st.title("🏥 Gestão Centralizada de Leitos")
+    # Título travado também à esquerda
+    st.markdown('<div class="titulo-painel"><h2>🏥 Gestão Centralizada de Leitos</h2></div>', unsafe_allow_html=True)
     
-    cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#94a3b8'}
+    cores = {
+        'VERDE': '#22c55e', 
+        'AMARELO': '#eab308', 
+        'VERMELHO': '#ef4444', 
+        'CINZA': '#94a3b8'
+    }
 
-    # Montamos UMA ÚNICA STRING de HTML para o painel todo
-    html_total = f"<html><head>{CSS_CARDS}</head><body><div class='painel-geral'>"
+    # Início do container que permite o scroll lateral na página toda
+    painel_html = "<div class='painel-container'>"
 
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
-        html_total += f"<div class='linha-unidade'>"
-        html_total += f"<div class='label-unidade'>{unidade}<br><small style='color:gray'>{especialidade}</small></div>"
-        html_total += "<div class='cards-wrapper'>"
+        painel_html += f"<div class='linha-hospital'>"
         
+        # Coluna fixa
+        painel_html += f"""
+            <div class='coluna-unidade-fixa'>
+                <p class='nome-unidade'>{unidade}</p>
+                <p class='nome-especialidade'>{especialidade}</p>
+            </div>
+        """
+        
+        # Início dos cards
+        painel_html += "<div class='wrapper-leitos'>"
         for _, row in g_esp.iterrows():
             cor = cores.get(row['STATUS'], cores['CINZA'])
-            html_total += f'''
-                <div class="card-leito">
-                    <div class="txt-num">{row['PARA']}</div>
-                    <div class="txt-tipo">{row['TIPO']}</div>
-                    <div class="status-bar" style="background-color: {cor};"></div>
+            painel_html += f'''
+                <div class="card-hospitalar">
+                    <div class="leito-id">{row['PARA']}</div>
+                    <div class="leito-tipo">{row['TIPO']}</div>
+                    <div class="indicador-status" style="background-color: {cor};"></div>
                 </div>
             '''
-        html_total += "</div></div>"
+        painel_html += "</div></div>" # Fecha wrapper e linha
 
-    html_total += "</div></body></html>"
+    painel_html += "</div>" # Fecha painel-container
     
-    # O SEGREDO: Usar components.html para renderizar tudo de uma vez
-    # O height pode ser ajustado conforme o número de linhas (ex: 80px por linha)
-    altura_calculada = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) * 100
-    components.html(html_total, height=max(altura_calculada, 600), scrolling=True)
+    st.markdown(painel_html, unsafe_allow_html=True)
 
 else:
-    st.error("Erro ao carregar os dados da planilha.")
+    st.info("Aguardando conexão com os dados...")
