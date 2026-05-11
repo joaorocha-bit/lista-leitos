@@ -8,16 +8,19 @@ st.set_page_config(page_title="Painel de Monitoramento de Leitos", layout="wide"
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
-    URL = f"https://docs.google.com/spreadsheets/d/1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4/edit?gid=0#gid=0"
+    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
     
     try:
         response = requests.get(URL)
         response.raise_for_status()
         
-        # 1. Tenta ler com UTF-8
-        df_raw = pd.read_csv(StringIO(response.text), encoding='utf-8')
+        # Corrigindo o problema do Â direto no texto bruto da resposta
+        conteudo_limpo = response.text.replace('Âº', 'º').replace('âº', 'º')
         
-        # 2. Mapeamento das colunas (A, B, C, F, J)
+        # Lê o conteúdo já "limpo" pelo Pandas
+        df_raw = pd.read_csv(StringIO(conteudo_limpo))
+        
+        # Mapeamento das colunas (A=0, B=1, C=2, F=5, J=9)
         df_final = pd.DataFrame()
         df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)
         df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)
@@ -25,13 +28,20 @@ def carregar_dados():
         df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
         df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
         
-        # --- CORREÇÃO DE CARACTERES ESTRANHOS ---
-        # Esta função vai limpar o "Âº" e transformar em "º" em todas as colunas de texto
-        def limpar_caracteres(texto):
-            if isinstance(texto, str):
-                return texto.replace('Âº', 'º').replace('âº', 'º').replace('Ãº', 'ú')
-            return texto
+        # Status na Coluna K (índice 10)
+        if df_raw.shape[1] > 10:
+            df_final['STATUS'] = df_raw.iloc[:, 10].fillna('VERDE').astype(str).str.upper()
+        else:
+            df_final['STATUS'] = 'VERDE'
 
+        # Removendo espaços extras que podem ter sobrado
+        df_final = df_final.map(lambda x: x.strip() if isinstance(x, str) else x)
+
+        return df_final
+    except Exception as e:
+        st.error(f"Erro ao carregar planilha: {e}")
+        return None
+        
         df_final = df_final.applymap(limpar_caracteres)
         # ----------------------------------------
 
