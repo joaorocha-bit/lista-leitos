@@ -42,20 +42,6 @@ def carregar_dados():
         st.error(f"Erro ao carregar planilha: {e}")
         return None
         
-        df_final = df_final.applymap(limpar_caracteres)
-        # ----------------------------------------
-
-        # Status na Coluna K (índice 10)
-        if df_raw.shape[1] > 10:
-            df_final['STATUS'] = df_raw.iloc[:, 10].fillna('VERDE').astype(str).str.upper()
-        else:
-            df_final['STATUS'] = 'VERDE'
-
-        return df_final
-    except Exception as e:
-        st.error(f"Erro ao carregar planilha: {e}")
-        return None
-        
 # Estilização CSS para os Cards
 st.markdown("""
     <style>
