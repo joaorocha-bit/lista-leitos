@@ -14,27 +14,29 @@ def carregar_dados():
         response = requests.get(URL)
         response.raise_for_status()
         
-        # Corrigindo o problema do Â direto no texto bruto da resposta
+        # Corrige o problema do caractere estranho Â antes de processar
         conteudo_limpo = response.text.replace('Âº', 'º').replace('âº', 'º')
         
-        # Lê o conteúdo já "limpo" pelo Pandas
+        # Lê o conteúdo
         df_raw = pd.read_csv(StringIO(conteudo_limpo))
         
-        # Mapeamento das colunas (A=0, B=1, C=2, F=5, J=9)
+        # Mapeamento das colunas:
         df_final = pd.DataFrame()
-        df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)
-        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)
-        df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2].astype(str)
-        df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
-        df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
+        df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)         # Coluna A
+        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)       # Coluna B
+        df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2].astype(str) # Coluna C
+        df_final['PARA'] = df_raw.iloc[:, 5].astype(str)          # Coluna F
+        df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)          # Coluna J
         
-        # Status na Coluna K (índice 10)
-        if df_raw.shape[1] > 10:
-            df_final['STATUS'] = df_raw.iloc[:, 10].fillna('VERDE').astype(str).str.upper()
+        # STATUS na Coluna V (Índice 21)
+        # Verificamos se a planilha tem colunas suficientes para chegar na V
+        if df_raw.shape[1] >= 22: 
+            df_final['STATUS'] = df_raw.iloc[:, 21].fillna('VERDE').astype(str).str.upper().str.strip()
         else:
+            # Caso a coluna V não exista ou esteja fora do alcance
             df_final['STATUS'] = 'VERDE'
 
-        # Removendo espaços extras que podem ter sobrado
+        # Limpeza final de espaços em branco
         df_final = df_final.map(lambda x: x.strip() if isinstance(x, str) else x)
 
         return df_final
