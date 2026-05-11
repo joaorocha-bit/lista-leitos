@@ -4,7 +4,8 @@ import requests
 from io import StringIO
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Painel Mosaico de Leitos", layout="wide")
+# Configuração da página para modo tela cheia
+st.set_page_config(page_title="Mapa Geral de Leitos", layout="wide")
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
@@ -12,9 +13,11 @@ def carregar_dados():
     try:
         response = requests.get(URL)
         response.raise_for_status()
+        # Corrige o encoding do símbolo 'º'
         conteudo = response.text.replace('Âº', 'º').replace('âº', 'º')
         df_raw = pd.read_csv(StringIO(conteudo))
         
+        # Mapeamento fixo das colunas: A=0, B=1, C=2, F=5, J=9, V=21
         df_final = pd.DataFrame()
         df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)
         df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)
@@ -22,6 +25,7 @@ def carregar_dados():
         df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
         df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
         
+        # Status na Coluna V. Se vazia, fica Cinza.
         if df_raw.shape[1] >= 22: 
             df_final['STATUS'] = df_raw.iloc[:, 21].fillna('CINZA').astype(str).str.upper().str.strip()
         else:
@@ -33,72 +37,80 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return None
 
-# --- CSS MINIMALISTA (MOSAICO COMPACTO) ---
-CSS_MINIMALISTA = """
+# --- CSS ULTRA MINIMALISTA ---
+CSS_MOSAICO = """
 <style>
-    body { font-family: 'Inter', sans-serif; background-color: white; margin: 0; }
-    .mosaico-container {
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #ffffff; margin: 0; }
+    .mosaico-wrapper {
         display: flex !important;
-        flex-wrap: wrap !important; /* Faz os leitos "quebrarem" para a linha de baixo se faltar espaço */
-        gap: 6px !important;
-        padding: 5px 0px !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        padding: 10px 0px !important;
     }
-    .leito-micro-card {
+    .card-leito {
         flex: 0 1 auto !important;
-        width: 85px !important; /* Tamanho reduzido para caber tudo */
-        border: 1px solid #f0f0f0 !important;
+        width: 90px !important;
+        border: 1px solid #eeeeee !important;
         border-radius: 4px !important;
-        padding: 6px 2px !important;
+        padding: 8px 4px !important;
         text-align: center !important;
-        background-color: #fff !important;
+        background-color: #ffffff !important;
     }
-    .status-dot {
+    .txt-leito { font-size: 12px !important; font-weight: bold; color: #333; margin-bottom: 2px; }
+    .txt-tipo { font-size: 9px !important; color: #888; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+    .barra-cor {
         height: 6px !important;
-        width: 80% !important;
-        margin: 4px auto 0 auto !important;
-        border-radius: 2px !important;
+        width: 100% !important;
+        margin-top: 6px !important;
+        border-radius: 0px 0px 3px 3px !important;
     }
-    .nome-leito { font-size: 11px !important; font-weight: 700 !important; color: #333; }
-    .tipo-leito { font-size: 8px !important; color: #999; text-transform: uppercase; overflow: hidden; white-space: nowrap; }
-    
-    .secao-titulo { font-size: 14px; font-weight: bold; color: #555; margin-top: 15px; border-left: 3px solid #ddd; padding-left: 8px; }
+    .header-unidade { 
+        font-size: 16px; 
+        font-weight: bold; 
+        color: #444; 
+        margin-top: 20px; 
+        border-bottom: 1px solid #eee;
+        padding-bottom: 5px;
+    }
 </style>
 """
 
 df = carregar_dados()
 
 if df is not None:
-    # Sidebar minimalista
-    st.sidebar.caption("Filtros Rápidos")
-    bloco_filtro = st.sidebar.multiselect("Blocos", sorted(df['BLOCO'].unique()), default=sorted(df['BLOCO'].unique()))
-    df = df[df['BLOCO'].isin(bloco_filtro)]
-
     st.title("🏥 Mapa Geral de Leitos")
     
-    # Cores flat modernas
-    cores = {'VERDE': '#27ae60', 'AMARELO': '#f1c40f', 'VERMELHO': '#e74c3c', 'CINZA': '#dcdde1'}
+    # Cores flat
+    cores_map = {
+        'VERDE': '#27ae60', 
+        'AMARELO': '#f1c40f', 
+        'VERMELHO': '#e74c3c', 
+        'CINZA': '#d1d8e0'
+    }
 
-    # Exibição compacta
-    for unidade, g_unidade in df.groupby('UNIDADE', sort=False):
-        st.markdown(f"<div class='secao-titulo'>{unidade}</div>", unsafe_allow_html=True)
+    # Agrupa por Bloco e Unidade para organizar a tela
+    for (bloco, unidade), g_unidade in df.groupby(['BLOCO', 'UNIDADE'], sort=False):
+        st.markdown(f"<div class='header-unidade'>Bloco {bloco} - {unidade}</div>", unsafe_allow_html=True)
         
-        # Gerando o HTML de todos os leitos da unidade de uma vez
-        html_mosaico = f"{CSS_MINIMALISTA}<div class='mosaico-container'>"
+        # Monta o HTML do bloco de leitos
+        html_cards = f"{CSS_MOSAICO}<div class='mosaico-wrapper'>"
         
         for _, row in g_unidade.iterrows():
-            cor = cores.get(row['STATUS'], cores['CINZA'])
-            html_mosaico += f'''
-                <div class="leito-micro-card">
-                    <div class="nome-leito">{row['PARA']}</div>
-                    <div class="tipo-leito">{row['TIPO']}</div>
-                    <div class="status-dot" style="background-color: {cor};"></div>
+            cor = cores_map.get(row['STATUS'], cores_map['CINZA'])
+            html_cards += f'''
+                <div class="card-leito">
+                    <div class="txt-leito">{row['PARA']}</div>
+                    <div class="txt-tipo">{row['TIPO']}</div>
+                    <div class="barra-cor" style="background-color: {cor};"></div>
                 </div>
             '''
-        html_mosaico += "</div>"
+        html_cards += "</div>"
         
-        # Ajuste de altura automática conforme a quantidade de leitos
-        altura_estimada = (len(g_unidade) // 10 + 1) * 65 
-        components.html(html_mosaico, height=max(altura_estimada, 70))
-
+        # Calcula a altura do componente baseado na quantidade de leitos (mosaico)
+        # Aproximadamente 12 leitos por linha em resoluções padrão
+        linhas = (len(g_unidade) // 12) + 1
+        altura = linhas * 85
+        
+        components.html(html_cards, height=altura, scrolling=False)
 else:
-    st.error("Planilha não encontrada ou sem acesso.")
+    st.info("Conecte a planilha para visualizar o mapa.")
