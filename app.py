@@ -4,8 +4,7 @@ import requests
 from io import StringIO
 import streamlit.components.v1 as components
 
-# Configuração da página
-st.set_page_config(page_title="Painel Dinâmico de Leitos", layout="wide")
+st.set_page_config(page_title="Painel Mosaico de Leitos", layout="wide")
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
@@ -16,7 +15,6 @@ def carregar_dados():
         conteudo = response.text.replace('Âº', 'º').replace('âº', 'º')
         df_raw = pd.read_csv(StringIO(conteudo))
         
-        # Mapeamento A, B, C, F, J
         df_final = pd.DataFrame()
         df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)
         df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)
@@ -24,7 +22,6 @@ def carregar_dados():
         df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
         df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
         
-        # STATUS na Coluna V (21)
         if df_raw.shape[1] >= 22: 
             df_final['STATUS'] = df_raw.iloc[:, 21].fillna('CINZA').astype(str).str.upper().str.strip()
         else:
@@ -36,87 +33,72 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return None
 
-# --- CSS PARA OS CARDS ---
-CSS_ESTILO = """
+# --- CSS MINIMALISTA (MOSAICO COMPACTO) ---
+CSS_MINIMALISTA = """
 <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f1f5f9; }
-    .scroll-container {
+    body { font-family: 'Inter', sans-serif; background-color: white; margin: 0; }
+    .mosaico-container {
         display: flex !important;
-        flex-direction: row !important;
-        overflow-x: auto !important;
-        padding: 10px !important;
-        gap: 12px !important;
+        flex-wrap: wrap !important; /* Faz os leitos "quebrarem" para a linha de baixo se faltar espaço */
+        gap: 6px !important;
+        padding: 5px 0px !important;
     }
-    .leito-card {
-        flex: 0 0 auto !important;
-        width: 130px !important;
-        background: white !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 8px !important;
-        padding: 12px !important;
+    .leito-micro-card {
+        flex: 0 1 auto !important;
+        width: 85px !important; /* Tamanho reduzido para caber tudo */
+        border: 1px solid #f0f0f0 !important;
+        border-radius: 4px !important;
+        padding: 6px 2px !important;
         text-align: center !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        background-color: #fff !important;
     }
-    .status-bar { height: 10px !important; border-radius: 4px !important; margin-top: 8px !important; }
-    .scroll-container::-webkit-scrollbar { height: 6px; }
-    .scroll-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .status-dot {
+        height: 6px !important;
+        width: 80% !important;
+        margin: 4px auto 0 auto !important;
+        border-radius: 2px !important;
+    }
+    .nome-leito { font-size: 11px !important; font-weight: 700 !important; color: #333; }
+    .tipo-leito { font-size: 8px !important; color: #999; text-transform: uppercase; overflow: hidden; white-space: nowrap; }
+    
+    .secao-titulo { font-size: 14px; font-weight: bold; color: #555; margin-top: 15px; border-left: 3px solid #ddd; padding-left: 8px; }
 </style>
 """
 
 df = carregar_dados()
 
 if df is not None:
-    # --- BARRA LATERAL (DINÂMICA) ---
-    st.sidebar.header("📊 Filtros da Dinâmica")
+    # Sidebar minimalista
+    st.sidebar.caption("Filtros Rápidos")
+    bloco_filtro = st.sidebar.multiselect("Blocos", sorted(df['BLOCO'].unique()), default=sorted(df['BLOCO'].unique()))
+    df = df[df['BLOCO'].isin(bloco_filtro)]
+
+    st.title("🏥 Mapa Geral de Leitos")
     
-    # Filtro de Bloco
-    blocos = ["Todos"] + sorted(df['BLOCO'].unique().tolist())
-    bloco_selecionado = st.sidebar.selectbox("Filtrar por Bloco:", blocos)
-    
-    # Filtro de Unidade (atualiza conforme o Bloco)
-    if bloco_selecionado != "Todos":
-        df_filtrado = df[df['BLOCO'] == bloco_selecionado]
-    else:
-        df_filtrado = df
+    # Cores flat modernas
+    cores = {'VERDE': '#27ae60', 'AMARELO': '#f1c40f', 'VERMELHO': '#e74c3c', 'CINZA': '#dcdde1'}
+
+    # Exibição compacta
+    for unidade, g_unidade in df.groupby('UNIDADE', sort=False):
+        st.markdown(f"<div class='secao-titulo'>{unidade}</div>", unsafe_allow_html=True)
         
-    unidades = ["Todas"] + sorted(df_filtrado['UNIDADE'].unique().tolist())
-    unidade_selecionada = st.sidebar.selectbox("Filtrar por Unidade:", unidades)
-    
-    if unidade_selecionada != "Todas":
-        df_filtrado = df_filtrado[df_filtrado['UNIDADE'] == unidade_selecionada]
-
-    # --- MÉTRICAS (Resumo da Dinâmica) ---
-    st.title("🏥 Gestão Dinâmica de Leitos")
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total de Leitos", len(df_filtrado))
-    m2.metric("Ocupados (Vermelho)", len(df_filtrado[df_filtrado['STATUS'] == 'VERMELHO']))
-    m3.metric("Limpando (Amarelo)", len(df_filtrado[df_filtrado['STATUS'] == 'AMARELO']))
-    m4.metric("Disponíveis (Verde)", len(df_filtrado[df_filtrado['STATUS'] == 'VERDE']))
-
-    st.divider()
-
-    # --- RENDERIZAÇÃO DOS CARDS ---
-    cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#94a3b8'}
-
-    # Agrupamento final para exibição
-    for unidade, g_unidade in df_filtrado.groupby('UNIDADE', sort=False):
-        st.subheader(f"📍 {unidade}")
+        # Gerando o HTML de todos os leitos da unidade de uma vez
+        html_mosaico = f"{CSS_MINIMALISTA}<div class='mosaico-container'>"
         
-        for especialidade, g_esp in g_unidade.groupby('ESPECIALIDADE', sort=False):
-            st.write(f"**Especialidade:** {especialidade} ({len(g_esp)} leitos)")
-            
-            html_cards = f"{CSS_ESTILO}<div class='scroll-container'>"
-            for _, row in g_esp.iterrows():
-                cor = cores.get(row['STATUS'], cores['CINZA'])
-                html_cards += f'''
-                    <div class="leito-card">
-                        <div style="font-size: 16px; font-weight: bold; color: #1e293b;">{row['PARA']}</div>
-                        <div style="font-size: 10px; color: #64748b; margin-top: 4px; height: 25px; overflow: hidden;">{row['TIPO']}</div>
-                        <div class="status-bar" style="background-color: {cor};"></div>
-                    </div>
-                '''
-            html_cards += "</div>"
-            components.html(html_cards, height=130)
-            
+        for _, row in g_unidade.iterrows():
+            cor = cores.get(row['STATUS'], cores['CINZA'])
+            html_mosaico += f'''
+                <div class="leito-micro-card">
+                    <div class="nome-leito">{row['PARA']}</div>
+                    <div class="tipo-leito">{row['TIPO']}</div>
+                    <div class="status-dot" style="background-color: {cor};"></div>
+                </div>
+            '''
+        html_mosaico += "</div>"
+        
+        # Ajuste de altura automática conforme a quantidade de leitos
+        altura_estimada = (len(g_unidade) // 10 + 1) * 65 
+        components.html(html_mosaico, height=max(altura_estimada, 70))
+
 else:
-    st.error("Não foi possível conectar à planilha.")
+    st.error("Planilha não encontrada ou sem acesso.")
