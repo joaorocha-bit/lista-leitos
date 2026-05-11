@@ -14,18 +14,28 @@ def carregar_dados():
         response = requests.get(URL)
         response.raise_for_status()
         
-        # O SEGREDO ESTÁ AQUI: Especificamos encoding='utf-8' para ler acentos e símbolos corretamente
+        # 1. Tenta ler com UTF-8
         df_raw = pd.read_csv(StringIO(response.text), encoding='utf-8')
         
-        # Mapeamento pelas letras das colunas: A, B, C, F, J
+        # 2. Mapeamento das colunas (A, B, C, F, J)
         df_final = pd.DataFrame()
-        df_final['BLOCO'] = df_raw.iloc[:, 0]         # Coluna A
-        df_final['UNIDADE'] = df_raw.iloc[:, 1]       # Coluna B
-        df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2] # Coluna C
-        df_final['PARA'] = df_raw.iloc[:, 5]          # Coluna F
-        df_final['TIPO'] = df_raw.iloc[:, 9]          # Coluna J
+        df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)
+        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)
+        df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2].astype(str)
+        df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
+        df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
         
-        # Status
+        # --- CORREÇÃO DE CARACTERES ESTRANHOS ---
+        # Esta função vai limpar o "Âº" e transformar em "º" em todas as colunas de texto
+        def limpar_caracteres(texto):
+            if isinstance(texto, str):
+                return texto.replace('Âº', 'º').replace('âº', 'º').replace('Ãº', 'ú')
+            return texto
+
+        df_final = df_final.applymap(limpar_caracteres)
+        # ----------------------------------------
+
+        # Status na Coluna K (índice 10)
         if df_raw.shape[1] > 10:
             df_final['STATUS'] = df_raw.iloc[:, 10].fillna('VERDE').astype(str).str.upper()
         else:
