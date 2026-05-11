@@ -34,7 +34,7 @@ def carregar_dados():
             df_final['STATUS'] = df_raw.iloc[:, 21].fillna('VERDE').astype(str).str.upper().str.strip()
         else:
             # Caso a coluna V não exista ou esteja fora do alcance
-            df_final['STATUS'] = 'VERDE'
+            df_final['STATUS'] = 'CINZA'
 
         # Limpeza final de espaços em branco
         df_final = df_final.map(lambda x: x.strip() if isinstance(x, str) else x)
