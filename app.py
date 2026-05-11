@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import requests
 from io import StringIO
+import streamlit.components.v1 as components
 
 # 1. Configuração da página
 st.set_page_config(page_title="Painel de Leitos Hospitalar", layout="wide")
@@ -33,52 +34,43 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return None
 
-# 2. CSS GLOBAL (Força o scroll na página toda e fixa o tamanho dos cards)
-st.markdown("""
-    <style>
-    /* Remove as margens padrão do Streamlit para dar espaço ao scroll */
-    .main .block-container {
-        max-width: none !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-        overflow-x: auto !important;
+# 2. CSS que será injetado dentro do componente de HTML
+CSS_CARDS = """
+<style>
+    .painel-geral {
+        display: flex;
+        flex-direction: column;
+        font-family: sans-serif;
+        gap: 15px;
     }
-
-    /* Estilo da Linha (não deixa quebrar) */
-    .linha-painel {
-        display: flex !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        margin-bottom: 12px !important;
-        width: max-content !important; /* Estica a linha conforme o número de cards */
+    .linha-unidade {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
     }
-
-    /* Nome da Unidade fixo à esquerda */
     .label-unidade {
-        width: 220px !important;
-        min-width: 220px !important;
+        width: 200px;
+        min-width: 200px;
         font-weight: bold;
         font-size: 14px;
-        color: #1e293b;
-        background: white;
+        color: #334155;
         position: sticky;
         left: 0;
-        z-index: 99;
+        background: white;
+        z-index: 10;
         border-right: 2px solid #f1f5f9;
-        padding-right: 10px;
     }
-
-    /* Container dos Cards */
     .cards-wrapper {
-        display: flex !important;
-        gap: 8px !important;
-        padding-left: 15px !important;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding-left: 10px;
     }
-
-    /* O Card em si */
-    .card-hospitalar {
-        flex: 0 0 100px !important; /* LARGURA PADRÃO FIXA */
-        width: 100px !important;
+    .card-leito {
+        flex: 0 0 100px;
+        width: 100px;
         background: white;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
@@ -86,14 +78,12 @@ st.markdown("""
         text-align: center;
         box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
     }
+    .txt-num { font-size: 14px; font-weight: bold; color: #1e293b; }
+    .txt-tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
+    .status-bar { height: 8px; border-radius: 4px; margin-top: 8px; }
+</style>
+"""
 
-    .num-leito { font-size: 14px; font-weight: bold; color: #334155; }
-    .tipo-leito { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
-    .status-indicador { height: 8px; border-radius: 4px; margin-top: 8px; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 3. Execução do Painel
 df = carregar_dados()
 
 if df is not None:
@@ -101,30 +91,31 @@ if df is not None:
     
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#94a3b8'}
 
-    # Agrupamento
+    # Montamos UMA ÚNICA STRING de HTML para o painel todo
+    html_total = f"<html><head>{CSS_CARDS}</head><body><div class='painel-geral'>"
+
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
+        html_total += f"<div class='linha-unidade'>"
+        html_total += f"<div class='label-unidade'>{unidade}<br><small style='color:gray'>{especialidade}</small></div>"
+        html_total += "<div class='cards-wrapper'>"
         
-        # Início da linha HTML
-        html_linha = f"<div class='linha-painel'>"
-        
-        # Texto da Unidade
-        html_linha += f"<div class='label-unidade'>{unidade}<br><small style='color:#64748b'>{especialidade}</small></div>"
-        
-        # Container de Cards
-        html_linha += "<div class='cards-wrapper'>"
         for _, row in g_esp.iterrows():
             cor = cores.get(row['STATUS'], cores['CINZA'])
-            html_linha += f'''
-                <div class="card-hospitalar">
-                    <div class="num-leito">{row['PARA']}</div>
-                    <div class="tipo-leito">{row['TIPO']}</div>
-                    <div class="status-indicador" style="background-color: {cor};"></div>
+            html_total += f'''
+                <div class="card-leito">
+                    <div class="txt-num">{row['PARA']}</div>
+                    <div class="txt-tipo">{row['TIPO']}</div>
+                    <div class="status-bar" style="background-color: {cor};"></div>
                 </div>
             '''
-        html_linha += "</div></div>" # Fecha wrapper e linha
-        
-        # Renderiza a linha na tela
-        st.markdown(html_linha, unsafe_allow_html=True)
+        html_total += "</div></div>"
+
+    html_total += "</div></body></html>"
+    
+    # O SEGREDO: Usar components.html para renderizar tudo de uma vez
+    # O height pode ser ajustado conforme o número de linhas (ex: 80px por linha)
+    altura_calculada = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) * 100
+    components.html(html_total, height=max(altura_calculada, 600), scrolling=True)
 
 else:
-    st.warning("Verifique a conexão com a planilha do Google.")
+    st.error("Erro ao carregar os dados da planilha.")
