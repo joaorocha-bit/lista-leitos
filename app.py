@@ -1,71 +1,100 @@
 import pandas as pd
-from weasyprint import HTML
+import streamlit as st
+from fpdf import FPDF
 
-# 1. Carregar os dados (Substitua pelo caminho do seu arquivo CSV ou conexão gspread)
-# df = pd.read_csv('seu_arquivo.csv')
-# Abaixo, uma simulação baseada na sua estrutura:
+# 1. Dados de exemplo (Substitua pela sua lógica de leitura da planilha)
 data = {
     'BLOCO': ['BLOCO A', 'BLOCO A', 'BLOCO B'],
     'UNIDADE': ['UTI', 'UTI', 'ENFERMARIA'],
     'ESPECIALIDADE': ['CARDIOLOGIA', 'CARDIOLOGIA', 'CLINICA MEDICA'],
-    'PARA': ['101', '102', '205'],
+    'PARA': ['1001', '1002', '2001'],
     'TIPO DE ACOMODAÇÃO': ['INDIVIDUAL', 'DUPLO', 'COLETIVO'],
-    'STATUS': ['VERDE', 'AMARELO', 'VERMELHO'] # Coluna que você adicionará
+    'STATUS': ['VERDE', 'AMARELO', 'VERMELHO']
 }
 df = pd.DataFrame(data)
 
-# 2. Configuração de Cores
-color_map = {
-    'VERDE': '#2ecc71',
-    'AMARELO': '#f1c40f',
-    'VERMELHO': '#e74c3c'
-}
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'MAPA DE CONTROLE DE LEITOS', ln=True, align='C')
+        self.ln(5)
 
-# 3. Construção do Layout HTML/CSS
-html_template = """
-<html>
-<head>
-    <style>
-        @page { size: A4 landscape; margin: 10mm; }
-        body { font-family: sans-serif; color: #333; }
-        .bloco { background: #2c3e50; color: white; padding: 10px; margin-top: 20px; border-radius: 4px; }
-        .unidade { color: #2980b9; margin-left: 20px; border-bottom: 2px solid #eee; padding: 5px; font-weight: bold; }
-        .especialidade { margin-left: 40px; color: #7f8c8d; font-style: italic; margin-bottom: 10px; }
-        .container-leitos { margin-left: 40px; }
-        .card { 
-            display: inline-block; width: 100px; border: 1px solid #ccc; 
-            margin: 5px; text-align: center; border-radius: 4px; overflow: hidden;
-        }
-        .leito-id { font-weight: bold; padding: 5px; background: #f4f4f4; }
-        .leito-tipo { font-size: 8pt; padding: 10px 2px; min-height: 30px; }
-        .status-bar { height: 15px; width: 100%; }
-    </style>
-</head>
-<body>
-    <h1 style="text-align:center">Mapa de Leitos</h1>
-"""
+def gerar_pdf(dataframe):
+    pdf = PDF(orientation='L', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    # Cores
+    cores_rgb = {
+        'VERDE': (46, 204, 113),
+        'AMARELO': (241, 196, 15),
+        'VERMELHO': (231, 76, 60)
+    }
 
-# 4. Lógica de Ramificação (Grouping)
-for bloco, g_bloco in df.groupby('BLOCO'):
-    html_template += f'<div class="bloco">BLOCO: {bloco}</div>'
-    for unidade, g_unidade in g_bloco.groupby('UNIDADE'):
-        html_template += f'<div class="unidade">UNIDADE: {unidade}</div>'
-        for especialidade, g_esp in g_unidade.groupby('ESPECIALIDADE'):
-            html_template += f'<div class="especialidade">{especialidade}</div>'
-            html_template += '<div class="container-leitos">'
-            for _, row in g_esp.iterrows():
-                cor = color_map.get(row['STATUS'], '#bdc3c7')
-                html_template += f'''
-                <div class="card">
-                    <div class="leito-id">{row['PARA']}</div>
-                    <div class="leito-tipo">{row['TIPO DE ACOMODAÇÃO']}</div>
-                    <div class="status-bar" style="background-color: {cor}"></div>
-                </div>
-                '''
-            html_template += '</div>'
+    for bloco, g_bloco in dataframe.groupby('BLOCO'):
+        # Título do Bloco
+        pdf.set_fill_color(44, 62, 80)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(0, 10, f" BLOCO: {bloco}", ln=True, fill=True)
+        pdf.set_text_color(0, 0, 0)
+        
+        for unidade, g_unidade in g_bloco.groupby('UNIDADE'):
+            pdf.ln(2)
+            pdf.set_font('Arial', 'B', 11)
+            pdf.set_text_color(41, 128, 185)
+            pdf.cell(0, 8, f"  UNIDADE: {unidade}", ln=True)
+            
+            for especialidade, g_esp in g_unidade.groupby('ESPECIALIDADE'):
+                pdf.set_font('Arial', 'I', 10)
+                pdf.set_text_color(100, 100, 100)
+                pdf.cell(0, 7, f"    Especialidade: {especialidade}", ln=True)
+                
+                # Desenhar os "Cards" dos leitos
+                pdf.set_font('Arial', '', 9)
+                x_inicial = pdf.get_x() + 15
+                
+                for index, row in g_esp.iterrows():
+                    # Borda do card
+                    curr_x = pdf.get_x()
+                    curr_y = pdf.get_y()
+                    
+                    # Cabeçalho do Leito (Número)
+                    pdf.set_fill_color(240, 240, 240)
+                    pdf.rect(curr_x + 15, curr_y, 30, 8, 'F')
+                    pdf.set_xy(curr_x + 15, curr_y)
+                    pdf.set_font('Arial', 'B', 10)
+                    pdf.cell(30, 8, str(row['PARA']), border=1, align='C')
+                    
+                    # Tipo de Acomodação
+                    pdf.set_xy(curr_x + 15, curr_y + 8)
+                    pdf.set_font('Arial', '', 7)
+                    pdf.multi_cell(30, 4, row['TIPO DE ACOMODAÇÃO'], border=1, align='C')
+                    
+                    # Barra de Status (Cor)
+                    cor = cores_rgb.get(row['STATUS'], (200, 200, 200))
+                    pdf.set_fill_color(*cor)
+                    pdf.rect(curr_x + 15, pdf.get_y(), 30, 4, 'F')
+                    pdf.rect(curr_x + 15, pdf.get_y(), 30, 4, 'D')
+                    
+                    # Move para o lado para o próximo card
+                    pdf.set_xy(curr_x + 35, curr_y)
+                    
+                    if pdf.get_x() > 250: # Quebra linha se chegar no fim da página
+                        pdf.ln(25)
+                
+                pdf.ln(25) # Espaço após fechar uma especialidade
+    
+    return pdf.output(dest='S')
 
-html_template += "</body></html>"
+# Interface Streamlit
+st.title("Gerador de Mapa de Leitos")
 
-# 5. Gerar PDF
-HTML(string=html_template).write_pdf("Mapa_Leitos_Final.pdf")
-print("PDF gerado com sucesso!")
+if st.button("Gerar PDF para Impressão"):
+    pdf_bytes = gerar_pdf(df)
+    st.download_button(
+        label="Baixar PDF",
+        data=pdf_bytes,
+        file_name="mapa_leitos.pdf",
+        mime="application/pdf"
+    )
