@@ -4,7 +4,7 @@ import requests
 from io import StringIO
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Mapa de Leitos Horizontal", layout="wide")
+st.set_page_config(page_title="Mapa Geral de Leitos", layout="wide")
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
@@ -33,74 +33,79 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return None
 
-# --- CSS PARA TRILHA ÚNICA (SEM QUEBRA) ---
-CSS_TRILHA = """
+# --- CSS PARA FORÇAR TODOS NA MESMA LINHA (SEM SCROLL) ---
+CSS_LINHA_TOTAL = """
 <style>
-    body { font-family: 'Segoe UI', sans-serif; background-color: #fff; margin: 0; }
-    .trilha-container {
+    body { font-family: sans-serif; background-color: white; margin: 0; overflow: hidden; }
+    .linha-leitos {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: nowrap !important; /* FORÇA A LINHA ÚNICA */
-        overflow-x: auto !important;   /* ATIVA SCROLL LATERAL */
-        gap: 6px !important;
-        padding: 5px 0px 15px 0px !important;
-    }
-    .card-mini {
-        flex: 0 0 auto !important; /* IMPEDE O CARD DE ENCOLHER */
-        width: 80px !important;
-        border: 1px solid #eee !important;
-        border-radius: 4px !important;
-        padding: 6px 2px !important;
-        text-align: center !important;
-        background-color: #fff !important;
-    }
-    .txt-leito { font-size: 11px !important; font-weight: bold; color: #333; }
-    .txt-tipo { font-size: 8px !important; color: #aaa; text-transform: uppercase; overflow: hidden; white-space: nowrap; }
-    .barra-status {
-        height: 6px !important;
+        flex-wrap: nowrap !important; /* Proíbe quebra de linha */
         width: 100% !important;
-        margin-top: 4px !important;
-        border-radius: 2px !important;
+        gap: 2px !important; /* Espaço mínimo entre leitos */
+        align-items: stretch !important;
     }
-    /* Estilo da barra de rolagem */
-    .trilha-container::-webkit-scrollbar { height: 4px; }
-    .trilha-container::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 10px; }
+    .leito-unidade {
+        flex: 1 1 0px !important; /* Força todos a terem o mesmo tamanho e encolherem o necessário */
+        min-width: 0 !important;   /* Permite que o card encolha além do conteúdo */
+        border: 1px solid #f0f0f0 !important;
+        text-align: center !important;
+        padding: 4px 1px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+    }
+    .txt-num { 
+        font-size: 10px !important; 
+        font-weight: bold; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+    }
+    .txt-sub { 
+        font-size: 7px !important; 
+        color: #999; 
+        white-space: nowrap; 
+        overflow: hidden; 
+    }
+    .faixa-status {
+        height: 5px !important;
+        width: 100% !important;
+        margin-top: 3px !important;
+    }
 </style>
 """
 
 df = carregar_dados()
 
 if df is not None:
-    st.title("🏥 Mapa Operacional (Visão em Linha)")
+    st.title("🏥 Mapa Geral em Linha Única")
     
-    cores_dict = {
+    cores_css = {
         'VERDE': '#2ecc71', 
         'AMARELO': '#f1c40f', 
         'VERMELHO': '#e74c3c', 
         'CINZA': '#dcdde1'
     }
 
-    # Agrupamento por Unidade e Especialidade
-    for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
-        st.markdown(f"**{unidade}** <small>({especialidade})</small>", unsafe_allow_html=True)
+    # Agrupa por Unidade para criar uma linha por unidade
+    for unidade, g_unidade in df.groupby('UNIDADE', sort=False):
+        st.caption(f"📍 **{unidade}** ({len(g_unidade)} leitos)")
         
-        # Gerando o HTML da trilha horizontal
-        html_trilha = f"{CSS_TRILHA}<div class='trilha-container'>"
+        # HTML da linha
+        html_linha = f"{CSS_LINHA_TOTAL}<div class='linha-leitos'>"
         
-        for _, row in g_esp.iterrows():
-            cor = cores_dict.get(row['STATUS'], cores_dict['CINZA'])
-            html_trilha += f'''
-                <div class="card-mini">
-                    <div class="txt-leito">{row['PARA']}</div>
-                    <div class="txt-tipo">{row['TIPO']}</div>
-                    <div class="barra-status" style="background-color: {cor};"></div>
+        for _, row in g_unidade.iterrows():
+            cor = cores_css.get(row['STATUS'], cores_css['CINZA'])
+            html_linha += f'''
+                <div class="leito-unidade">
+                    <div class="txt-num">{row['PARA']}</div>
+                    <div class="txt-sub">{row['TIPO'][:3]}</div>
+                    <div class="faixa-status" style="background-color: {cor};"></div>
                 </div>
             '''
-        html_trilha += "</div>"
+        html_linha += "</div>"
         
-        # Como é apenas uma linha, a altura pode ser pequena e fixa
-        components.html(html_trilha, height=85)
-        st.markdown("<hr style='margin:0; border-top:1px solid #f9f9f9'>", unsafe_allow_html=True)
-
+        # Renderiza a linha. Altura pequena para ficar minimalista.
+        components.html(html_linha, height=55)
 else:
-    st.info("Carregando dados da planilha...")
+    st.info("Aguardando dados da planilha...")
