@@ -2,9 +2,9 @@ import pandas as pd
 import streamlit as st
 import requests
 from io import StringIO
-import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Mapa Geral de Leitos", layout="wide")
+# Configuração da página - layout wide é essencial aqui
+st.set_page_config(page_title="Painel de Leitos Integrado", layout="wide")
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
@@ -33,79 +33,99 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return None
 
-# --- CSS PARA FORÇAR TODOS NA MESMA LINHA (SEM SCROLL) ---
-CSS_LINHA_TOTAL = """
-<style>
-    body { font-family: sans-serif; background-color: white; margin: 0; overflow: hidden; }
-    .linha-leitos {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important; /* Proíbe quebra de linha */
-        width: 100% !important;
-        gap: 2px !important; /* Espaço mínimo entre leitos */
-        align-items: stretch !important;
+# --- CSS PARA SCROLL LATERAL NA PÁGINA TODA ---
+st.markdown("""
+    <style>
+    /* Força o container principal do Streamlit a permitir scroll horizontal */
+    .main .block-container {
+        overflow-x: auto !important;
     }
-    .leito-unidade {
-        flex: 1 1 0px !important; /* Força todos a terem o mesmo tamanho e encolherem o necessário */
-        min-width: 0 !important;   /* Permite que o card encolha além do conteúdo */
-        border: 1px solid #f0f0f0 !important;
-        text-align: center !important;
-        padding: 4px 1px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
-    }
-    .txt-num { 
-        font-size: 10px !important; 
-        font-weight: bold; 
-        overflow: hidden; 
-        text-overflow: ellipsis; 
-    }
-    .txt-sub { 
-        font-size: 7px !important; 
-        color: #999; 
+    
+    /* Container que abraça todas as linhas e impede quebra */
+    .painel-horizontal {
+        display: inline-block; /* Faz o container esticar conforme o conteúdo */
+        min-width: 100%;
         white-space: nowrap; 
-        overflow: hidden; 
+        padding-bottom: 20px;
     }
-    .faixa-status {
-        height: 5px !important;
-        width: 100% !important;
-        margin-top: 3px !important;
+
+    .linha-unidade {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 15px;
+        align-items: center;
     }
-</style>
-"""
+
+    .info-secao {
+        width: 250px; /* Largura fixa para os nomes das unidades não sumirem */
+        position: sticky;
+        left: 0;
+        background: white;
+        z-index: 10;
+        padding-right: 15px;
+        font-weight: bold;
+        font-size: 14px;
+        color: #334155;
+        border-right: 2px solid #f1f5f9;
+    }
+
+    .cards-container {
+        display: flex;
+        gap: 8px;
+        padding-left: 10px;
+    }
+
+    .leito-card {
+        flex: 0 0 auto;
+        width: 100px; /* TAMANHO PADRÃO QUE VOCÊ PEDIU */
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px 4px;
+        text-align: center;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .txt-num { font-size: 13px; font-weight: bold; color: #1e293b; }
+    .txt-tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; }
+    .status-bar { height: 8px; border-radius: 2px; margin-top: 6px; }
+    </style>
+    """, unsafe_allow_html=True)
 
 df = carregar_dados()
 
 if df is not None:
-    st.title("🏥 Mapa Geral em Linha Única")
+    st.title("🏥 Gestão de Leitos Hospitalares")
     
-    cores_css = {
-        'VERDE': '#2ecc71', 
-        'AMARELO': '#f1c40f', 
-        'VERMELHO': '#e74c3c', 
-        'CINZA': '#dcdde1'
-    }
+    cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#94a3b8'}
 
-    # Agrupa por Unidade para criar uma linha por unidade
-    for unidade, g_unidade in df.groupby('UNIDADE', sort=False):
-        st.caption(f"📍 **{unidade}** ({len(g_unidade)} leitos)")
+    # Início do Painel Horizontal Único
+    html_painel = "<div class='painel-horizontal'>"
+
+    for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
+        # Cada par Unidade/Especialidade é uma linha
+        html_painel += f"<div class='linha-unidade'>"
         
-        # HTML da linha
-        html_linha = f"{CSS_LINHA_TOTAL}<div class='linha-leitos'>"
+        # Título da Seção (Fica "grudado" na esquerda ao dar scroll)
+        html_painel += f"<div class='info-secao'>{unidade}<br><small style='color:gray'>{especialidade}</small></div>"
         
-        for _, row in g_unidade.iterrows():
-            cor = cores_css.get(row['STATUS'], cores_css['CINZA'])
-            html_linha += f'''
-                <div class="leito-unidade">
+        # Container de cards desta linha
+        html_painel += "<div class='cards-container'>"
+        for _, row in g_esp.iterrows():
+            cor = cores.get(row['STATUS'], cores['CINZA'])
+            html_painel += f'''
+                <div class="leito-card">
                     <div class="txt-num">{row['PARA']}</div>
-                    <div class="txt-sub">{row['TIPO'][:3]}</div>
-                    <div class="faixa-status" style="background-color: {cor};"></div>
+                    <div class="txt-tipo">{row['TIPO']}</div>
+                    <div class="status-bar" style="background-color: {cor};"></div>
                 </div>
             '''
-        html_linha += "</div>"
-        
-        # Renderiza a linha. Altura pequena para ficar minimalista.
-        components.html(html_linha, height=55)
+        html_painel += "</div></div>" # Fecha cards-container e linha-unidade
+
+    html_painel += "</div>" # Fecha painel-horizontal
+    
+    # Renderiza tudo em um único bloco de Markdown/HTML
+    st.markdown(html_painel, unsafe_allow_html=True)
+
 else:
-    st.info("Aguardando dados da planilha...")
+    st.error("Erro ao carregar a planilha.")
