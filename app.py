@@ -1,117 +1,125 @@
 import pandas as pd
 import streamlit as st
 from fpdf import FPDF
+import requests
+from io import StringIO
 
-# Configuração da página do Streamlit
-st.set_page_config(page_title="Mapa de Leitos", layout="wide")
+# Configuração da página para ocupar a tela toda
+st.set_page_config(page_title="Mapa de Leitos Hospitalar", layout="wide")
 
-# 1. Carregamento dos Dados (Simulação - substitua pela sua leitura do Google Sheets)
-# Exemplo: df = pd.read_csv("link_da_sua_planilha_csv")
-data = {
-    'BLOCO': ['BLOCO A', 'BLOCO A', 'BLOCO A', 'BLOCO B', 'BLOCO B'],
-    'UNIDADE': ['UTI ADULTO', 'UTI ADULTO', 'ENFERMARIA', 'UTI PEDIATRICA', 'UTI PEDIATRICA'],
-    'ESPECIALIDADE': ['CARDIOLOGIA', 'CARDIOLOGIA', 'CLINICA MEDICA', 'NEUROLOGIA', 'NEUROLOGIA'],
-    'PARA': ['101-A', '101-B', '205', '301', '302'],
-    'TIPO DE ACOMODAÇÃO': ['APARTAMENTO', 'ENFERMARIA', 'ENFERMARIA', 'APARTAMENTO', 'APARTAMENTO'],
-    'STATUS': ['VERDE', 'AMARELO', 'VERMELHO', 'VERDE', 'VERDE']
-}
-df = pd.DataFrame(data)
+# --- CONEXÃO COM A SUA PLANILHA ---
+def carregar_dados():
+    # ID extraído do seu link: 16pyATNoGY1YUvpv3nGc3DJ3rxaD20QAJ7Rb4ulZ0wvU
+    SHEET_ID = "16pyATNoGY1YUvpv3nGc3DJ3rxaD20QAJ7Rb4ulZ0wvU"
+    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
+    
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+        # Lendo o CSV da sua planilha
+        df = pd.read_csv(StringIO(response.text))
+        
+        # Garantindo que as colunas críticas existam (evita erro se houver espaço no nome)
+        df.columns = [c.strip() for c in df.columns]
+        return df
+    except Exception as e:
+        st.error(f"Erro ao acessar a planilha: {e}. Verifique se o compartilhamento está ativo para 'Qualquer pessoa com o link'.")
+        return None
 
-st.title("🏥 Gestão de Leitos - Visualização e Impressão")
-
-# --- VISUALIZAÇÃO DA PLANILHA ---
-st.subheader("1. Confira os dados da planilha abaixo:")
-st.dataframe(df, use_container_width=True)
-
-# --- LÓGICA DO PDF ---
+# --- GERADOR DE PDF (LAYOUT DO DESENHO) ---
 class PDF(FPDF):
     def header(self):
-        self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, 'MAPA DE CONTROLE DE LEITOS', ln=True, align='C')
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, 'MAPA DE LEITOS - VISÃO OPERACIONAL', ln=True, align='C')
         self.ln(5)
 
-def gerar_pdf(dataframe):
-    # 'L' = Landscape (Paisagem)
+def gerar_pdf_horizontal(df):
     pdf = PDF(orientation='L', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     
+    # Mapeamento de Cores
     cores_rgb = {
         'VERDE': (46, 204, 113),
         'AMARELO': (241, 196, 15),
-        'VERMELHO': (231, 76, 60)
+        'VERMELHO': (231, 76, 60),
+        'CINZA': (200, 200, 200)
     }
 
-    # Agrupamento: Bloco -> Unidade -> Especialidade
-    for bloco, g_bloco in dataframe.groupby('BLOCO'):
-        pdf.set_fill_color(44, 62, 80)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font('Arial', 'B', 14)
-        pdf.cell(0, 10, f" BLOCO: {bloco}", ln=True, fill=True)
-        pdf.set_text_color(0, 0, 0)
+    # Agrupar pela hierarquia do seu desenho
+    # BLOCO -> UNIDADE -> ESPECIALIDADE
+    grupos = df.groupby(['BLOCO', 'UNIDADE', 'ESPECIALIDADE'], sort=False)
+
+    for (bloco, unidade, especialidade), leitos in grupos:
+        h_base = 8 # Altura de cada "andar" do leito
+        y_start = pdf.get_y()
         
-        for unidade, g_unidade in g_bloco.groupby('UNIDADE'):
-            pdf.ln(2)
-            pdf.set_font('Arial', 'B', 11)
-            pdf.set_text_color(41, 128, 185)
-            pdf.cell(0, 8, f"  UNIDADE: {unidade}", ln=True)
+        # --- CABEÇALHOS (Lado Esquerdo) ---
+        pdf.set_font('Arial', 'B', 8)
+        # Célula BLOCO
+        pdf.set_xy(10, y_start)
+        pdf.cell(15, h_base * 3, f"BLOCO {bloco}", border=1, align='C')
+        # Célula UNIDADE
+        pdf.set_xy(25, y_start)
+        pdf.cell(35, h_base * 3, str(unidade), border=1, align='C')
+        # Célula ESPECIALIDADE
+        pdf.set_xy(60, y_start)
+        pdf.cell(35, h_base * 3, str(especialidade), border=1, align='C')
+        
+        # --- CARDS DE LEITOS (Lado Direito) ---
+        x_pos = 100
+        for _, row in leitos.iterrows():
+            # Verifica se o card cabe na linha (A4 Paisagem tem ~297mm)
+            if x_pos > 265:
+                y_start += (h_base * 3) + 2
+                x_pos = 100
+                if y_start > 180: # Nova página se estourar altura
+                    pdf.add_page()
+                    y_start = pdf.get_y()
+
+            # Nível 1: PARA (Leito)
+            pdf.set_xy(x_pos, y_start)
+            pdf.set_font('Arial', 'B', 9)
+            pdf.set_fill_color(245, 245, 245)
+            pdf.cell(28, h_base, str(row['PARA']), border=1, align='C', fill=True)
             
-            for especialidade, g_esp in g_unidade.groupby('ESPECIALIDADE'):
-                pdf.set_font('Arial', 'I', 10)
-                pdf.set_text_color(100, 100, 100)
-                pdf.cell(0, 7, f"    Especialidade: {especialidade}", ln=True)
-                
-                # Início dos cards de leitos
-                pdf.ln(2)
-                for index, row in g_esp.iterrows():
-                    curr_x = pdf.get_x()
-                    curr_y = pdf.get_y()
-                    
-                    # Se o card for sair da página, pula linha
-                    if curr_x > 250:
-                        pdf.ln(25)
-                        curr_x = pdf.get_x()
-                        curr_y = pdf.get_y()
+            # Nível 2: TIPO DE ACOMODAÇÃO
+            pdf.set_xy(x_pos, y_start + h_base)
+            pdf.set_font('Arial', '', 7)
+            pdf.cell(28, h_base, str(row['TIPO DE ACOMODAÇÃO']), border=1, align='C')
+            
+            # Nível 3: STATUS (Barra de Cor)
+            pdf.set_xy(x_pos, y_start + (h_base * 2))
+            status = str(row.get('STATUS', 'CINZA')).upper().strip()
+            cor = cores_rgb.get(status, cores_rgb['CINZA'])
+            pdf.set_fill_color(*cor)
+            pdf.cell(28, h_base, "", border=1, fill=True)
+            
+            x_pos += 28 # Largura do card + margem pequena
+            
+        pdf.set_y(y_start + (h_base * 3) + 4) # Espaço para a próxima linha
 
-                    # Desenha Card
-                    pdf.set_fill_color(245, 245, 245)
-                    pdf.rect(pdf.get_x() + 5, curr_y, 35, 18, 'F') # Fundo
-                    
-                    # Número do Leito
-                    pdf.set_font('Arial', 'B', 11)
-                    pdf.set_xy(pdf.get_x() + 5, curr_y + 1)
-                    pdf.cell(35, 5, str(row['PARA']), border=0, align='C')
-                    
-                    # Acomodação
-                    pdf.set_font('Arial', '', 7)
-                    pdf.set_xy(pdf.get_x() - 35, curr_y + 6)
-                    pdf.multi_cell(35, 3, str(row['TIPO DE ACOMODAÇÃO']), border=0, align='C')
-                    
-                    # Barra de Status
-                    cor = cores_rgb.get(str(row['STATUS']).upper(), (200, 200, 200))
-                    pdf.set_fill_color(*cor)
-                    pdf.rect(pdf.get_x(), curr_y + 14, 35, 4, 'F') # Barra colorida
-                    pdf.rect(pdf.get_x(), curr_y, 35, 18, 'D')     # Borda externa
-                    
-                    # Move para a direita para o próximo card
-                    pdf.set_xy(pdf.get_x() + 40, curr_y)
-                
-                pdf.ln(22) # Espaço após cada grupo de especialidade
-
-    # RETORNO IMPORTANTE: Convertendo para bytes que o Streamlit aceita
     return bytes(pdf.output())
 
-# --- BOTÃO DE DOWNLOAD ---
-st.subheader("2. Gerar arquivo para impressão:")
-if st.button("Preparar PDF"):
-    try:
-        pdf_output = gerar_pdf(df)
-        st.success("✅ PDF gerado com sucesso!")
-        st.download_button(
-            label="Clique aqui para baixar o PDF",
-            data=pdf_output,
-            file_name="mapa_leitos_hospitalar.pdf",
-            mime="application/pdf"
-        )
-    except Exception as e:
-        st.error(f"Erro ao gerar o PDF: {e}")
+# --- INTERFACE STREAMLIT ---
+st.title("🏥 Sistema de Impressão de Leitos")
+
+df_planilha = carregar_dados()
+
+if df_planilha is not None:
+    # 1. Visualização Prévia
+    st.subheader("Visualização da Planilha Conectada")
+    st.dataframe(df_planilha, use_container_width=True)
+    
+    # 2. Ação de Impressão
+    st.divider()
+    if st.button("🛠️ Gerar Layout para Impressão"):
+        with st.spinner('Formatando leitos...'):
+            pdf_bytes = gerar_pdf_horizontal(df_planilha)
+            st.success("Mapa pronto para baixar!")
+            st.download_button(
+                label="📥 Baixar PDF Agora",
+                data=pdf_bytes,
+                file_name="mapa_leitos_horizontal.pdf",
+                mime="application/pdf"
+            )
