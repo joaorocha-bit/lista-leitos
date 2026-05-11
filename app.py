@@ -8,7 +8,7 @@ st.set_page_config(page_title="Painel de Monitoramento de Leitos", layout="wide"
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
-    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
+    URL = f"https://docs.google.com/spreadsheets/d/1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4/edit?gid=0#gid=0"
     
     try:
         response = requests.get(URL)
