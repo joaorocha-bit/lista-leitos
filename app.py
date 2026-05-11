@@ -3,8 +3,8 @@ import streamlit as st
 import requests
 from io import StringIO
 
-# Configuração da página - layout wide é essencial aqui
-st.set_page_config(page_title="Painel de Leitos Integrado", layout="wide")
+# 1. Configuração da página
+st.set_page_config(page_title="Painel de Leitos Hospitalar", layout="wide")
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
@@ -33,99 +33,98 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return None
 
-# --- CSS PARA SCROLL LATERAL NA PÁGINA TODA ---
+# 2. CSS GLOBAL (Força o scroll na página toda e fixa o tamanho dos cards)
 st.markdown("""
     <style>
-    /* Força o container principal do Streamlit a permitir scroll horizontal */
+    /* Remove as margens padrão do Streamlit para dar espaço ao scroll */
     .main .block-container {
+        max-width: none !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
         overflow-x: auto !important;
     }
-    
-    /* Container que abraça todas as linhas e impede quebra */
-    .painel-horizontal {
-        display: inline-block; /* Faz o container esticar conforme o conteúdo */
-        min-width: 100%;
-        white-space: nowrap; 
-        padding-bottom: 20px;
+
+    /* Estilo da Linha (não deixa quebrar) */
+    .linha-painel {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        margin-bottom: 12px !important;
+        width: max-content !important; /* Estica a linha conforme o número de cards */
     }
 
-    .linha-unidade {
-        display: flex;
-        flex-direction: row;
-        margin-bottom: 15px;
-        align-items: center;
-    }
-
-    .info-secao {
-        width: 250px; /* Largura fixa para os nomes das unidades não sumirem */
-        position: sticky;
-        left: 0;
-        background: white;
-        z-index: 10;
-        padding-right: 15px;
+    /* Nome da Unidade fixo à esquerda */
+    .label-unidade {
+        width: 220px !important;
+        min-width: 220px !important;
         font-weight: bold;
         font-size: 14px;
-        color: #334155;
+        color: #1e293b;
+        background: white;
+        position: sticky;
+        left: 0;
+        z-index: 99;
         border-right: 2px solid #f1f5f9;
+        padding-right: 10px;
     }
 
-    .cards-container {
-        display: flex;
-        gap: 8px;
-        padding-left: 10px;
+    /* Container dos Cards */
+    .cards-wrapper {
+        display: flex !important;
+        gap: 8px !important;
+        padding-left: 15px !important;
     }
 
-    .leito-card {
-        flex: 0 0 auto;
-        width: 100px; /* TAMANHO PADRÃO QUE VOCÊ PEDIU */
-        background: #ffffff;
+    /* O Card em si */
+    .card-hospitalar {
+        flex: 0 0 100px !important; /* LARGURA PADRÃO FIXA */
+        width: 100px !important;
+        background: white;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
-        padding: 8px 4px;
+        padding: 10px 5px;
         text-align: center;
         box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
     }
 
-    .txt-num { font-size: 13px; font-weight: bold; color: #1e293b; }
-    .txt-tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; }
-    .status-bar { height: 8px; border-radius: 2px; margin-top: 6px; }
+    .num-leito { font-size: 14px; font-weight: bold; color: #334155; }
+    .tipo-leito { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
+    .status-indicador { height: 8px; border-radius: 4px; margin-top: 8px; }
     </style>
     """, unsafe_allow_html=True)
 
+# 3. Execução do Painel
 df = carregar_dados()
 
 if df is not None:
-    st.title("🏥 Gestão de Leitos Hospitalares")
+    st.title("🏥 Gestão Centralizada de Leitos")
     
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#94a3b8'}
 
-    # Início do Painel Horizontal Único
-    html_painel = "<div class='painel-horizontal'>"
-
+    # Agrupamento
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
-        # Cada par Unidade/Especialidade é uma linha
-        html_painel += f"<div class='linha-unidade'>"
         
-        # Título da Seção (Fica "grudado" na esquerda ao dar scroll)
-        html_painel += f"<div class='info-secao'>{unidade}<br><small style='color:gray'>{especialidade}</small></div>"
+        # Início da linha HTML
+        html_linha = f"<div class='linha-painel'>"
         
-        # Container de cards desta linha
-        html_painel += "<div class='cards-container'>"
+        # Texto da Unidade
+        html_linha += f"<div class='label-unidade'>{unidade}<br><small style='color:#64748b'>{especialidade}</small></div>"
+        
+        # Container de Cards
+        html_linha += "<div class='cards-wrapper'>"
         for _, row in g_esp.iterrows():
             cor = cores.get(row['STATUS'], cores['CINZA'])
-            html_painel += f'''
-                <div class="leito-card">
-                    <div class="txt-num">{row['PARA']}</div>
-                    <div class="txt-tipo">{row['TIPO']}</div>
-                    <div class="status-bar" style="background-color: {cor};"></div>
+            html_linha += f'''
+                <div class="card-hospitalar">
+                    <div class="num-leito">{row['PARA']}</div>
+                    <div class="tipo-leito">{row['TIPO']}</div>
+                    <div class="status-indicador" style="background-color: {cor};"></div>
                 </div>
             '''
-        html_painel += "</div></div>" # Fecha cards-container e linha-unidade
-
-    html_painel += "</div>" # Fecha painel-horizontal
-    
-    # Renderiza tudo em um único bloco de Markdown/HTML
-    st.markdown(html_painel, unsafe_allow_html=True)
+        html_linha += "</div></div>" # Fecha wrapper e linha
+        
+        # Renderiza a linha na tela
+        st.markdown(html_linha, unsafe_allow_html=True)
 
 else:
-    st.error("Erro ao carregar a planilha.")
+    st.warning("Verifique a conexão com a planilha do Google.")
