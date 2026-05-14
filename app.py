@@ -13,7 +13,6 @@ def carregar_dados():
     try:
         response = requests.get(URL)
         response.raise_for_status()
-        # Tratamento de caracteres especiais
         conteudo = response.text.replace('Âº', 'º').replace('âº', 'º')
         df_raw = pd.read_csv(StringIO(conteudo))
         
@@ -31,7 +30,6 @@ def carregar_dados():
 
         df_final = df_final.map(lambda x: x.strip() if isinstance(x, str) else x)
 
-        # --- LÓGICA DE ORDENAÇÃO CUSTOMIZADA ---
         ordem_unidades = [
             "A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2", "D3", "E1", "E3", 
             "F3 (UNIQUE)", "G3", "5º B", "9º MATERNO", "10º MATERNO", 
@@ -39,9 +37,7 @@ def carregar_dados():
             "CTIA 5A", "CTIA 4A", "UTI PED", "UTI NEO"
         ]
         
-        # Define a coluna UNIDADE como categórica para seguir a lista acima
         df_final['UNIDADE'] = pd.Categorical(df_final['UNIDADE'], categories=ordem_unidades, ordered=True)
-        # Ordena o DataFrame baseado nessa categoria
         df_final = df_final.sort_values(by='UNIDADE')
         
         return df_final
@@ -56,7 +52,6 @@ if df is not None:
 
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
-    # CSS para garantir o sticky e o scroll lateral
     html_style = """
     <style>
         body { font-family: sans-serif; margin: 0; background: white; }
@@ -74,15 +69,39 @@ if df is not None:
         }
         .leito { font-size: 14px; font-weight: bold; }
         .tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
-        .status { height: 6px; border-radius: 3px; margin-top: 8px; width: 80%; margin-left: 10%; }
+        .status-bar { height: 6px; border-radius: 3px; margin-top: 8px; width: 80%; margin-left: 10%; }
+        
+        /* Estilo para as estatísticas */
+        .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+        .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; }
     </style>
     """
 
     html_corpo = "<div class='container-geral'>"
-    # O groupby respeitará a ordem categórica definida no DataFrame
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
+        
+        # Cálculo das estatísticas da linha
+        total = len(g_esp)
+        contagem = g_esp['STATUS'].value_counts()
+        
+        html_stats = "<div class='stats-container'>"
+        for status_nome, cor_hex in cores.items():
+            qtd = contagem.get(status_nome, 0)
+            if qtd > 0:
+                porcentagem = (qtd / total) * 100
+                # Ajuste de cor do texto para o Amarelo e Cinza para melhor leitura
+                texto_cor = "black" if status_nome in ['AMARELO', 'CINZA'] else "white"
+                html_stats += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor};'>{qtd} ({porcentagem:.0f}%)</span>"
+        html_stats += "</div>"
+
         html_corpo += f"<div class='linha'>"
-        html_corpo += f"<div class='coluna-fixa'><b>{unidade}</b><br><small style='color:gray'>{especialidade}</small></div>"
+        html_corpo += f"""
+            <div class='coluna-fixa'>
+                <b>{unidade}</b><br>
+                <small style='color:gray'>{especialidade}</small>
+                {html_stats}
+            </div>"""
+        
         html_corpo += "<div class='wrapper-cards'>"
         for _, row in g_esp.iterrows():
             cor = cores.get(row['STATUS'], cores['CINZA'])
@@ -90,19 +109,17 @@ if df is not None:
                 <div class='card'>
                     <div class='leito'>{row['PARA']}</div>
                     <div class='tipo'>{row['TIPO']}</div>
-                    <div class='status' style='background-color: {cor};'></div>
+                    <div class='status-bar' style='background-color: {cor};'></div>
                 </div>
             """
         html_corpo += "</div></div>"
     html_corpo += "</div>"
 
-    # Junta tudo e renderiza via IFRAME
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     
-    # Altura dinâmica baseada na quantidade de linhas
-    # Usamos o nunique para contar quantas combinações de Unidade/Especialidade existem
     total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE']))
-    altura_box = total_linhas * 90
+    # Aumentei um pouco a altura por linha (de 90 para 110) para acomodar os novos dados
+    altura_box = total_linhas * 110
     components.html(html_final, height=max(altura_box, 800), scrolling=True)
 
 else:
