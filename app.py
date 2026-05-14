@@ -48,8 +48,11 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    st.title("🏥 Painel de Monitoramento dos Leitos")
-
+    # Cabeçalho com Título e Botão de Impressão no canto superior direito
+    col_titulo, col_botao = st.columns([0.85, 0.15])
+    with col_titulo:
+        st.title("🏥 Painel de Monitoramento dos Leitos")
+    
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
     html_style = """
@@ -75,12 +78,19 @@ if df is not None:
         .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
         .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; white-space: nowrap; }
         
-        /* Estilo para a caixa de total sem a borda extra */
         .total-geral-txt { color: #1e293b; font-size: 16px; font-weight: bold; }
+
+        /* Estilos para Impressão */
+        @media print {
+            .coluna-fixa { position: static !important; box-shadow: none !important; border-right: 1px solid #000 !important; }
+            .linha { page-break-inside: avoid; border-bottom: 1px solid #000 !important; }
+            body { background: white !important; }
+            @page { size: A3 landscape; margin: 1cm; }
+        }
     </style>
     """
 
-    html_corpo = "<div class='container-geral'>"
+    html_corpo = "<div id='conteudo-para-imprimir' class='container-geral'>"
     
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         total_linha = len(g_esp)
@@ -115,7 +125,7 @@ if df is not None:
             """
         html_corpo += "</div></div>"
 
-    # --- TOTAL GERAL ---
+    # TOTAL GERAL
     total_geral = len(df)
     contagem_geral = df['STATUS'].value_counts()
     
@@ -140,7 +150,29 @@ if df is not None:
     
     html_corpo += "</div>"
 
-    html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
+    # Script JavaScript para abrir nova janela e imprimir
+    js_print = """
+    <script>
+    function imprimirPainel() {
+        var conteudo = document.getElementById('conteudo-para-imprimir').outerHTML;
+        var estilos = document.getElementsByTagName('style')[0].outerHTML;
+        var janelaPrint = window.open('', '', 'width=1200,height=800');
+        janelaPrint.document.write('<html><head>' + estilos + '</head><body>');
+        janelaPrint.document.write('<h2 style="text-align:center">🏥 Painel de Monitoramento</h2>');
+        janelaPrint.document.write(conteudo);
+        janelaPrint.document.write('</body></html>');
+        janelaPrint.document.close();
+        setTimeout(function(){ 
+            janelaPrint.focus();
+            janelaPrint.print();
+            janelaPrint.close();
+        }, 500);
+    }
+    </script>
+    <button onclick="imprimirPainel()" style="position:fixed; top:10px; right:10px; z-index:9999; padding:8px 15px; background:#1e293b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🖨️ Imprimir Painel</button>
+    """
+
+    html_final = f"<html><head>{html_style}</head><body>{js_print}{html_corpo}</body></html>"
     
     total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1 
     altura_box = total_linhas * 110
