@@ -47,40 +47,21 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    # Ocultamos o título nativo do Streamlit para usar o título dentro do componente (melhor alinhamento)
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
     html_style = """
     <style>
         body { font-family: sans-serif; margin: 0; background: white; padding: 20px; }
         
-        /* Cabeçalho Alinhado */
         .header-container {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #edf2f7;
-            padding-bottom: 10px;
+            display: flex; align-items: center; margin-bottom: 20px;
+            border-bottom: 2px solid #edf2f7; padding-bottom: 10px;
         }
-        .titulo-painel {
-            font-size: 28px;
-            font-weight: bold;
-            color: #1e293b;
-            margin: 0;
-        }
+        .titulo-painel { font-size: 28px; font-weight: bold; color: #1e293b; margin: 0; }
         .btn-print {
-            margin-left: auto; /* Empurra o botão para a direita */
-            padding: 10px 20px;
-            background: #1e293b;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: background 0.2s;
+            margin-left: auto; padding: 10px 20px; background: #1e293b; color: white;
+            border: none; border-radius: 6px; cursor: pointer; font-weight: bold;
         }
-        .btn-print:hover { background: #334155; }
 
         .container-geral { display: inline-block; min-width: 100%; }
         .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; width: 100%; }
@@ -103,7 +84,6 @@ if df is not None:
         @media print {
             .btn-print { display: none !important; }
             body { padding: 0; zoom: 80%; }
-            .header-container { border-bottom: 1px solid #000; }
             .coluna-fixa { position: relative !important; left: 0 !important; box-shadow: none !important; }
             .linha { display: flex !important; page-break-inside: avoid !important; }
             @page { size: landscape; margin: 1cm; }
@@ -111,7 +91,6 @@ if df is not None:
     </style>
     """
 
-    # Conteúdo HTML
     html_corpo = f"""
     <div class="header-container">
         <h1 class="titulo-painel">🏥 Painel de Monitoramento dos Leitos</h1>
@@ -120,15 +99,14 @@ if df is not None:
     <div class="container-geral">
     """
     
+    # Contagem de blocos (linhas de especialidade) para calcular a altura
+    num_blocos = 0
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
+        num_blocos += 1
         total_linha = len(g_esp)
         contagem_linha = g_esp['STATUS'].value_counts()
         
-        stats = "".join([
-            f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>"
-            f"{contagem_linha.get(s,0)} ({(contagem_linha.get(s,0)/total_linha)*100:.0f}%)</span>" 
-            for s in cores if contagem_linha.get(s,0) > 0
-        ])
+        stats = "".join([f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>{contagem_linha.get(s,0)} ({(contagem_linha.get(s,0)/total_linha)*100:.0f}%)</span>" for s in cores if contagem_linha.get(s,0) > 0])
 
         html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>{unidade}</b><br><small style='color:gray'>{especialidade}</small><div class='stats-container'>{stats}</div></div>"
         html_corpo += "<div class='wrapper-cards'>"
@@ -139,19 +117,16 @@ if df is not None:
     # TOTAL GERAL
     total_g = len(df)
     cont_g = df['STATUS'].value_counts()
-    stats_g = "".join([
-        f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>"
-        f"{cont_g.get(s,0)} ({(cont_g.get(s,0)/total_g)*100:.0f}%)</span>" 
-        for s in cores if cont_g.get(s,0) > 0
-    ])
+    stats_g = "".join([f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>{cont_g.get(s,0)} ({(cont_g.get(s,0)/total_g)*100:.0f}%)</span>" for s in cores if cont_g.get(s,0) > 0])
     
     html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>TOTAL GERAL</b><br><small>Total: {total_g}</small><div class='stats-container'>{stats_g}</div></div><div class='wrapper-cards'></div></div></div>"
 
-    # Renderização Final
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
-    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 2
     
-    components.html(html_final, height=max(total_linhas * 120, 900), scrolling=True)
+    # Cálculo dinâmico de altura: 110px por bloco + 150px fixos para o cabeçalho e margens
+    altura_calculada = (num_blocos * 110) + 180
+    
+    components.html(html_final, height=altura_calculada, scrolling=True)
 
 else:
     st.error("Erro ao carregar dados.")
