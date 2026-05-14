@@ -59,7 +59,8 @@ if df is not None:
         .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; }
         .coluna-fixa { 
             position: sticky; left: 0; z-index: 100; 
-            min-width: 200px; background: white; padding: 10px;
+            min-width: 250px; /* Aumentado para evitar quebras de linha nas métricas */
+            background: white; padding: 10px;
             border-right: 2px solid #edf2f7; box-shadow: 2px 0 5px rgba(0,0,0,0.05);
         }
         .wrapper-cards { display: flex; flex-wrap: nowrap; gap: 8px; padding: 10px; }
@@ -71,16 +72,14 @@ if df is not None:
         .tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
         .status-bar { height: 6px; border-radius: 3px; margin-top: 8px; width: 80%; margin-left: 10%; }
         
-        /* Estilo para as estatísticas */
         .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
-        .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; }
+        .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; white-space: nowrap; }
     </style>
     """
 
     html_corpo = "<div class='container-geral'>"
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         
-        # Cálculo das estatísticas da linha
         total = len(g_esp)
         contagem = g_esp['STATUS'].value_counts()
         
@@ -89,7 +88,6 @@ if df is not None:
             qtd = contagem.get(status_nome, 0)
             if qtd > 0:
                 porcentagem = (qtd / total) * 100
-                # Ajuste de cor do texto para o Amarelo e Cinza para melhor leitura
                 texto_cor = "black" if status_nome in ['AMARELO', 'CINZA'] else "white"
                 html_stats += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor};'>{qtd} ({porcentagem:.0f}%)</span>"
         html_stats += "</div>"
@@ -118,7 +116,6 @@ if df is not None:
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     
     total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE']))
-    # Aumentei um pouco a altura por linha (de 90 para 110) para acomodar os novos dados
     altura_box = total_linhas * 110
     components.html(html_final, height=max(altura_box, 800), scrolling=True)
 
