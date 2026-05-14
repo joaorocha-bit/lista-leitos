@@ -47,35 +47,17 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    # Cabeçalho: Título na esquerda e Botão na direita
-    col_titulo, col_botao = st.columns([0.8, 0.2])
-    with col_titulo:
-        st.title("🏥 Painel de Monitoramento dos Leitos")
-    with col_botao:
-        st.write("<br>", unsafe_allow_html=True) # Alinhamento vertical leve
-        # Botão de impressão que dispara um pequeno script JS
-        if st.button("🖨️ Imprimir Painel"):
-            components.html(
-                """
-                <script>
-                    var iframe = window.parent.document.querySelector('iframe');
-                    iframe.contentWindow.print();
-                </script>
-                """,
-                height=0,
-            )
-
+    # 2. Estilos CSS (Base e Impressão)
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
     html_style = """
     <style>
         body { font-family: sans-serif; margin: 0; background: white; }
         .container-geral { display: inline-block; min-width: 100%; }
-        .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; }
+        .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; width: 100%; }
         .coluna-fixa { 
             position: sticky; left: 0; z-index: 100; 
-            min-width: 250px; 
-            background: white; padding: 10px;
+            min-width: 250px; background: white; padding: 10px;
             border-right: 2px solid #edf2f7; box-shadow: 2px 0 5px rgba(0,0,0,0.05);
         }
         .wrapper-cards { display: flex; flex-wrap: nowrap; gap: 8px; padding: 10px; }
@@ -87,57 +69,64 @@ if df is not None:
         .tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
         .status-bar { height: 6px; border-radius: 3px; margin-top: 8px; width: 80%; margin-left: 10%; }
         .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
-        .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; white-space: nowrap; }
-        .total-geral-txt { color: #1e293b; font-size: 16px; font-weight: bold; }
-
+        .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; }
+        
         @media print {
-            body { zoom: 80%; } /* Ajuste de escala para caber mais info */
-            .coluna-fixa { position: static !important; box-shadow: none !important; }
-            .linha { page-break-inside: avoid; }
-            @page { size: landscape; margin: 0.5cm; }
+            .coluna-fixa { position: relative !important; left: 0 !important; box-shadow: none !important; border-right: 1px solid #ddd !important; }
+            .linha { display: flex !important; page-break-inside: avoid !important; }
+            @page { size: landscape; margin: 1cm; }
+            body { zoom: 90%; }
         }
     </style>
     """
 
-    html_corpo = "<div class='container-geral'>"
+    # 3. Construção do corpo HTML
+    html_corpo = "<div id='print-area' class='container-geral'>"
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         total_linha = len(g_esp)
         contagem_linha = g_esp['STATUS'].value_counts()
-        html_stats = "<div class='stats-container'>"
-        for status_nome, cor_hex in cores.items():
-            qtd = contagem_linha.get(status_nome, 0)
-            if qtd > 0:
-                porcentagem = (qtd / total_linha) * 100
-                texto_cor = "black" if status_nome in ['AMARELO', 'CINZA'] else "white"
-                html_stats += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor};'>{qtd} ({porcentagem:.0f}%)</span>"
-        html_stats += "</div>"
+        
+        stats = "".join([f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>{contagem_linha.get(s,0)} ({(contagem_linha.get(s,0)/total_linha)*100:.0f}%)</span>" for s in cores if contagem_linha.get(s,0) > 0])
 
-        html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>{unidade}</b><br><small style='color:gray'>{especialidade}</small>{html_stats}</div>"
+        html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>{unidade}</b><br><small style='color:gray'>{especialidade}</small><div class='stats-container'>{stats}</div></div>"
         html_corpo += "<div class='wrapper-cards'>"
         for _, row in g_esp.iterrows():
-            cor = cores.get(row['STATUS'], cores['CINZA'])
-            html_corpo += f"<div class='card'><div class='leito'>{row['PARA']}</div><div class='tipo'>{row['TIPO']}</div><div class='status-bar' style='background-color: {cor};'></div></div>"
+            html_corpo += f"<div class='card'><div class='leito'>{row['PARA']}</div><div class='tipo'>{row['TIPO']}</div><div class='status-bar' style='background-color: {cores.get(row['STATUS'], '#cbd5e1')};'></div></div>"
         html_corpo += "</div></div>"
 
     # TOTAL GERAL
-    total_geral = len(df)
-    contagem_geral = df['STATUS'].value_counts()
-    html_stats_geral = "<div class='stats-container'>"
-    for status_nome, cor_hex in cores.items():
-        qtd_g = contagem_geral.get(status_nome, 0)
-        if qtd_g > 0:
-            porcentagem_g = (qtd_g / total_geral) * 100
-            texto_cor_g = "black" if status_nome in ['AMARELO', 'CINZA'] else "white"
-            html_stats_geral += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor_g};'>{qtd_g} ({porcentagem_g:.0f}%)</span>"
-    html_stats_geral += "</div>"
-
-    html_corpo += f"<div class='linha'><div class='coluna-fixa'><span class='total-geral-txt'>TOTAL GERAL</span><br><small style='color:#64748b; font-weight:bold;'>Total: {total_geral}</small>{html_stats_geral}</div><div class='wrapper-cards'></div></div></div>"
-
-    html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
+    total_g = len(df)
+    cont_g = df['STATUS'].value_counts()
+    stats_g = "".join([f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>{cont_g.get(s,0)} ({(cont_g.get(s,0)/total_g)*100:.0f}%)</span>" for s in cores if cont_g.get(s,0) > 0])
     
-    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1 
-    altura_box = total_linhas * 110
-    components.html(html_final, height=max(altura_box, 800), scrolling=True)
+    html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>TOTAL GERAL</b><br><small>Total: {total_g}</small><div class='stats-container'>{stats_g}</div></div><div class='wrapper-cards'></div></div></div>"
+
+    # 4. Interface do Streamlit
+    col1, col2 = st.columns([0.8, 0.2])
+    with col1:
+        st.title("🏥 Painel de Monitoramento dos Leitos")
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🖨️ Imprimir Painel"):
+            # Este JS abre uma nova janela, injeta o conteúdo e imprime. É o método mais seguro.
+            js_code = f"""
+            <script>
+            var win = window.open('', '_blank');
+            win.document.write('<html><head>{html_style.replace("position: sticky", "position: relative")}</head><body>');
+            win.document.write('<h2 style="font-family:sans-serif; text-align:center;">🏥 Painel de Leitos</h2>');
+            win.document.write(document.getElementById('print-frame').contentWindow.document.getElementById('print-area').outerHTML);
+            win.document.write('</body></html>');
+            win.document.close();
+            win.focus();
+            setTimeout(function() {{ win.print(); win.close(); }}, 1000);
+            </script>
+            """
+            st.components.v1.html(js_code, height=0)
+
+    # 5. Renderização Final
+    html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
+    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1
+    components.html(html_final, height=max(total_linhas * 110, 800), scrolling=True, id="print-frame")
 
 else:
     st.error("Erro ao carregar dados.")
