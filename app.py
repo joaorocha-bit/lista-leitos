@@ -47,7 +47,7 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    # 2. Estilos CSS (Base e Impressão)
+    # 2. Definição de Cores e Estilos
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
     html_style = """
@@ -80,13 +80,37 @@ if df is not None:
     </style>
     """
 
-    # 3. Construção do corpo HTML
-    html_corpo = "<div id='print-area' class='container-geral'>"
+    # 3. Cabeçalho com Título e Botão
+    col1, col2 = st.columns([0.8, 0.2])
+    with col1:
+        st.title("🏥 Painel de Monitoramento dos Leitos")
+    with col2:
+        st.write("<br>", unsafe_allow_html=True)
+        # Botão que recarrega a página com um parâmetro para disparar a impressão
+        if st.button("🖨️ Imprimir Painel"):
+            js_print = """
+            <script>
+                var win = window.open('', '_blank');
+                var content = window.parent.document.querySelector('iframe').contentDocument.body.innerHTML;
+                var head = window.parent.document.querySelector('iframe').contentDocument.head.innerHTML;
+                win.document.write('<html><head>' + head + '</head><body>' + content + '</body></html>');
+                win.document.close();
+                win.setTimeout(function(){ win.print(); win.close(); }, 500);
+            </script>
+            """
+            components.html(js_print, height=0)
+
+    # 4. Construção do conteúdo HTML
+    html_corpo = "<div class='container-geral'>"
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         total_linha = len(g_esp)
         contagem_linha = g_esp['STATUS'].value_counts()
         
-        stats = "".join([f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>{contagem_linha.get(s,0)} ({(contagem_linha.get(s,0)/total_linha)*100:.0f}%)</span>" for s in cores if contagem_linha.get(s,0) > 0])
+        stats = "".join([
+            f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>"
+            f"{contagem_linha.get(s,0)} ({(contagem_linha.get(s,0)/total_linha)*100:.0f}%)</span>" 
+            for s in cores if contagem_linha.get(s,0) > 0
+        ])
 
         html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>{unidade}</b><br><small style='color:gray'>{especialidade}</small><div class='stats-container'>{stats}</div></div>"
         html_corpo += "<div class='wrapper-cards'>"
@@ -97,36 +121,20 @@ if df is not None:
     # TOTAL GERAL
     total_g = len(df)
     cont_g = df['STATUS'].value_counts()
-    stats_g = "".join([f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>{cont_g.get(s,0)} ({(cont_g.get(s,0)/total_g)*100:.0f}%)</span>" for s in cores if cont_g.get(s,0) > 0])
+    stats_g = "".join([
+        f"<span class='stat-item' style='background-color:{cores[s]}; color:{'black' if s in ['AMARELO','CINZA'] else 'white'};'>"
+        f"{cont_g.get(s,0)} ({(cont_g.get(s,0)/total_g)*100:.0f}%)</span>" 
+        for s in cores if cont_g.get(s,0) > 0
+    ])
     
     html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>TOTAL GERAL</b><br><small>Total: {total_g}</small><div class='stats-container'>{stats_g}</div></div><div class='wrapper-cards'></div></div></div>"
-
-    # 4. Interface do Streamlit
-    col1, col2 = st.columns([0.8, 0.2])
-    with col1:
-        st.title("🏥 Painel de Monitoramento dos Leitos")
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🖨️ Imprimir Painel"):
-            # Este JS abre uma nova janela, injeta o conteúdo e imprime. É o método mais seguro.
-            js_code = f"""
-            <script>
-            var win = window.open('', '_blank');
-            win.document.write('<html><head>{html_style.replace("position: sticky", "position: relative")}</head><body>');
-            win.document.write('<h2 style="font-family:sans-serif; text-align:center;">🏥 Painel de Leitos</h2>');
-            win.document.write(document.getElementById('print-frame').contentWindow.document.getElementById('print-area').outerHTML);
-            win.document.write('</body></html>');
-            win.document.close();
-            win.focus();
-            setTimeout(function() {{ win.print(); win.close(); }}, 1000);
-            </script>
-            """
-            st.components.v1.html(js_code, height=0)
 
     # 5. Renderização Final
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1
-    components.html(html_final, height=max(total_linhas * 110, 800), scrolling=True, id="print-frame")
+    
+    # Removido o 'id' que causava o erro
+    components.html(html_final, height=max(total_linhas * 110, 800), scrolling=True)
 
 else:
     st.error("Erro ao carregar dados.")
