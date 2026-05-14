@@ -44,15 +44,27 @@ def carregar_dados():
     except Exception as e:
         return None
 
-# 2. Construção do HTML e CSS
 df = carregar_dados()
 
 if df is not None:
-    # Cabeçalho com Título e Botão de Impressão no canto superior direito
-    col_titulo, col_botao = st.columns([0.85, 0.15])
+    # Cabeçalho: Título na esquerda e Botão na direita
+    col_titulo, col_botao = st.columns([0.8, 0.2])
     with col_titulo:
         st.title("🏥 Painel de Monitoramento dos Leitos")
-    
+    with col_botao:
+        st.write("<br>", unsafe_allow_html=True) # Alinhamento vertical leve
+        # Botão de impressão que dispara um pequeno script JS
+        if st.button("🖨️ Imprimir Painel"):
+            components.html(
+                """
+                <script>
+                    var iframe = window.parent.document.querySelector('iframe');
+                    iframe.contentWindow.print();
+                </script>
+                """,
+                height=0,
+            )
+
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
     html_style = """
@@ -74,28 +86,23 @@ if df is not None:
         .leito { font-size: 14px; font-weight: bold; }
         .tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
         .status-bar { height: 6px; border-radius: 3px; margin-top: 8px; width: 80%; margin-left: 10%; }
-        
         .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
         .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; white-space: nowrap; }
-        
         .total-geral-txt { color: #1e293b; font-size: 16px; font-weight: bold; }
 
-        /* Estilos para Impressão */
         @media print {
-            .coluna-fixa { position: static !important; box-shadow: none !important; border-right: 1px solid #000 !important; }
-            .linha { page-break-inside: avoid; border-bottom: 1px solid #000 !important; }
-            body { background: white !important; }
-            @page { size: A3 landscape; margin: 1cm; }
+            body { zoom: 80%; } /* Ajuste de escala para caber mais info */
+            .coluna-fixa { position: static !important; box-shadow: none !important; }
+            .linha { page-break-inside: avoid; }
+            @page { size: landscape; margin: 0.5cm; }
         }
     </style>
     """
 
-    html_corpo = "<div id='conteudo-para-imprimir' class='container-geral'>"
-    
+    html_corpo = "<div class='container-geral'>"
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         total_linha = len(g_esp)
         contagem_linha = g_esp['STATUS'].value_counts()
-        
         html_stats = "<div class='stats-container'>"
         for status_nome, cor_hex in cores.items():
             qtd = contagem_linha.get(status_nome, 0)
@@ -105,30 +112,16 @@ if df is not None:
                 html_stats += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor};'>{qtd} ({porcentagem:.0f}%)</span>"
         html_stats += "</div>"
 
-        html_corpo += f"<div class='linha'>"
-        html_corpo += f"""
-            <div class='coluna-fixa'>
-                <b>{unidade}</b><br>
-                <small style='color:gray'>{especialidade}</small>
-                {html_stats}
-            </div>"""
-        
+        html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>{unidade}</b><br><small style='color:gray'>{especialidade}</small>{html_stats}</div>"
         html_corpo += "<div class='wrapper-cards'>"
         for _, row in g_esp.iterrows():
             cor = cores.get(row['STATUS'], cores['CINZA'])
-            html_corpo += f"""
-                <div class='card'>
-                    <div class='leito'>{row['PARA']}</div>
-                    <div class='tipo'>{row['TIPO']}</div>
-                    <div class='status-bar' style='background-color: {cor};'></div>
-                </div>
-            """
+            html_corpo += f"<div class='card'><div class='leito'>{row['PARA']}</div><div class='tipo'>{row['TIPO']}</div><div class='status-bar' style='background-color: {cor};'></div></div>"
         html_corpo += "</div></div>"
 
     # TOTAL GERAL
     total_geral = len(df)
     contagem_geral = df['STATUS'].value_counts()
-    
     html_stats_geral = "<div class='stats-container'>"
     for status_nome, cor_hex in cores.items():
         qtd_g = contagem_geral.get(status_nome, 0)
@@ -138,41 +131,9 @@ if df is not None:
             html_stats_geral += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor_g};'>{qtd_g} ({porcentagem_g:.0f}%)</span>"
     html_stats_geral += "</div>"
 
-    html_corpo += f"""
-    <div class='linha'>
-        <div class='coluna-fixa'>
-            <span class='total-geral-txt'>TOTAL GERAL</span><br>
-            <small style='color:#64748b; font-weight:bold;'>Total de Leitos: {total_geral}</small>
-            {html_stats_geral}
-        </div>
-        <div class='wrapper-cards'></div>
-    </div>"""
-    
-    html_corpo += "</div>"
+    html_corpo += f"<div class='linha'><div class='coluna-fixa'><span class='total-geral-txt'>TOTAL GERAL</span><br><small style='color:#64748b; font-weight:bold;'>Total: {total_geral}</small>{html_stats_geral}</div><div class='wrapper-cards'></div></div></div>"
 
-    # Script JavaScript para abrir nova janela e imprimir
-    js_print = """
-    <script>
-    function imprimirPainel() {
-        var conteudo = document.getElementById('conteudo-para-imprimir').outerHTML;
-        var estilos = document.getElementsByTagName('style')[0].outerHTML;
-        var janelaPrint = window.open('', '', 'width=1200,height=800');
-        janelaPrint.document.write('<html><head>' + estilos + '</head><body>');
-        janelaPrint.document.write('<h2 style="text-align:center">🏥 Painel de Monitoramento</h2>');
-        janelaPrint.document.write(conteudo);
-        janelaPrint.document.write('</body></html>');
-        janelaPrint.document.close();
-        setTimeout(function(){ 
-            janelaPrint.focus();
-            janelaPrint.print();
-            janelaPrint.close();
-        }, 500);
-    }
-    </script>
-    <button onclick="imprimirPainel()" style="position:fixed; top:10px; right:10px; z-index:9999; padding:8px 15px; background:#1e293b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🖨️ Imprimir Painel</button>
-    """
-
-    html_final = f"<html><head>{html_style}</head><body>{js_print}{html_corpo}</body></html>"
+    html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     
     total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1 
     altura_box = total_linhas * 110
