@@ -47,12 +47,19 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    # 2. Definição de Cores e Estilos
+    st.title("🏥 Painel de Monitoramento dos Leitos")
+
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
+    # CSS unificado (Tela + Impressão)
     html_style = """
     <style>
-        body { font-family: sans-serif; margin: 0; background: white; }
+        body { font-family: sans-serif; margin: 0; background: white; padding-top: 50px; }
+        .btn-print {
+            position: fixed; top: 10px; right: 20px; z-index: 1000;
+            padding: 10px 20px; background: #1e293b; color: white;
+            border: none; border-radius: 6px; cursor: pointer; font-weight: bold;
+        }
         .container-geral { display: inline-block; min-width: 100%; }
         .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; width: 100%; }
         .coluna-fixa { 
@@ -72,36 +79,28 @@ if df is not None:
         .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; }
         
         @media print {
+            .btn-print { display: none !important; }
+            body { padding-top: 0; zoom: 85%; }
             .coluna-fixa { position: relative !important; left: 0 !important; box-shadow: none !important; border-right: 1px solid #ddd !important; }
             .linha { display: flex !important; page-break-inside: avoid !important; }
             @page { size: landscape; margin: 1cm; }
-            body { zoom: 90%; }
         }
     </style>
     """
 
-    # 3. Cabeçalho com Título e Botão
-    col1, col2 = st.columns([0.8, 0.2])
-    with col1:
-        st.title("🏥 Painel de Monitoramento dos Leitos")
-    with col2:
-        st.write("<br>", unsafe_allow_html=True)
-        # Botão que recarrega a página com um parâmetro para disparar a impressão
-        if st.button("🖨️ Imprimir Painel"):
-            js_print = """
-            <script>
-                var win = window.open('', '_blank');
-                var content = window.parent.document.querySelector('iframe').contentDocument.body.innerHTML;
-                var head = window.parent.document.querySelector('iframe').contentDocument.head.innerHTML;
-                win.document.write('<html><head>' + head + '</head><body>' + content + '</body></html>');
-                win.document.close();
-                win.setTimeout(function(){ win.print(); win.close(); }, 500);
-            </script>
-            """
-            components.html(js_print, height=0)
+    # Script de Impressão simplificado
+    js_script = """
+    <script>
+        function imprimir() {
+            window.print();
+        }
+    </script>
+    """
 
-    # 4. Construção do conteúdo HTML
-    html_corpo = "<div class='container-geral'>"
+    # Construção do conteúdo HTML
+    html_corpo = f"<button class='btn-print' onclick='imprimir()'>🖨️ Imprimir Painel</button>"
+    html_corpo += "<div class='container-geral'>"
+    
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         total_linha = len(g_esp)
         contagem_linha = g_esp['STATUS'].value_counts()
@@ -129,12 +128,11 @@ if df is not None:
     
     html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>TOTAL GERAL</b><br><small>Total: {total_g}</small><div class='stats-container'>{stats_g}</div></div><div class='wrapper-cards'></div></div></div>"
 
-    # 5. Renderização Final
-    html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
+    # Renderização Final
+    html_final = f"<html><head>{html_style}{js_script}</head><body>{html_corpo}</body></html>"
     total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1
     
-    # Removido o 'id' que causava o erro
-    components.html(html_final, height=max(total_linhas * 110, 800), scrolling=True)
+    components.html(html_final, height=max(total_linhas * 115, 800), scrolling=True)
 
 else:
     st.error("Erro ao carregar dados.")
