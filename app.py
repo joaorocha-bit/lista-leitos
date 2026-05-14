@@ -44,10 +44,17 @@ df = carregar_dados()
 if df is not None:
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
-    # CSS Simplificado: Sem barras internas, focado na continuidade da página
     html_style = """
     <style>
-        body { font-family: sans-serif; margin: 0; background: white; padding: 10px; overflow: hidden; }
+        /* overflow-y: hidden mata a barra de cima/baixo | overflow-x: auto mantém a de esquerda/direita */
+        body { 
+            font-family: sans-serif; 
+            margin: 0; 
+            background: white; 
+            padding: 10px; 
+            overflow-y: hidden; 
+            overflow-x: auto; 
+        }
         
         .header-container { 
             display: flex; align-items: center; padding: 10px 0; 
@@ -59,7 +66,6 @@ if df is not None:
         .container-geral { display: inline-block; min-width: 100%; }
         .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; width: 100%; }
         
-        /* A coluna fixa continua funcionando enquanto você rola para os lados */
         .coluna-fixa { 
             position: sticky; left: 0; z-index: 100; min-width: 250px; 
             background: white; padding: 10px; border-right: 2px solid #edf2f7; 
@@ -116,9 +122,9 @@ if df is not None:
 
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     
-    # Cálculo para expandir o componente totalmente, evitando barra de scroll vertical interna
-    # 105px por linha + cabeçalho. scrolling=False remove a barra interna.
-    altura_total = (num_linhas * 105) + 150
+    # Altura total calculada para "esticar" o componente e não precisar de scroll vertical
+    # Usei 110px para dar uma margem de segurança e não cortar a barra horizontal
+    altura_total = (num_linhas * 110) + 160
     
     components.html(html_final, height=altura_total, scrolling=False)
 else:
