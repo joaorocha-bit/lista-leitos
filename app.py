@@ -13,12 +13,13 @@ def carregar_dados():
     try:
         response = requests.get(URL)
         response.raise_for_status()
+        # Tratamento de caracteres especiais
         conteudo = response.text.replace('Âº', 'º').replace('âº', 'º')
         df_raw = pd.read_csv(StringIO(conteudo))
         
         df_final = pd.DataFrame()
         df_final['BLOCO'] = df_raw.iloc[:, 0].astype(str)
-        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str)
+        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str).str.strip()
         df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2].astype(str)
         df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
         df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
@@ -29,6 +30,20 @@ def carregar_dados():
             df_final['STATUS'] = 'CINZA'
 
         df_final = df_final.map(lambda x: x.strip() if isinstance(x, str) else x)
+
+        # --- LÓGICA DE ORDENAÇÃO CUSTOMIZADA ---
+        ordem_unidades = [
+            "A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2", "D3", "E1", "E3", 
+            "F3 (UNIQUE)", "G3", "5º B", "9º MATERNO", "10º MATERNO", 
+            "CTIA 1º", "CTIA A1", "CTIA A2", "CTIA A3", "CTIA 3A", 
+            "CTIA 5A", "CTIA 4A", "UTI PED", "UTI NEO"
+        ]
+        
+        # Define a coluna UNIDADE como categórica para seguir a lista acima
+        df_final['UNIDADE'] = pd.Categorical(df_final['UNIDADE'], categories=ordem_unidades, ordered=True)
+        # Ordena o DataFrame baseado nessa categoria
+        df_final = df_final.sort_values(by='UNIDADE')
+        
         return df_final
     except Exception as e:
         return None
@@ -37,9 +52,9 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    st.title("🏥 Painel de Monitoramento")
+    st.title("🏥 Painel de Monitoramento dos Leitos")
 
-    cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1'}
+    cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
     # CSS para garantir o sticky e o scroll lateral
     html_style = """
@@ -64,6 +79,7 @@ if df is not None:
     """
 
     html_corpo = "<div class='container-geral'>"
+    # O groupby respeitará a ordem categórica definida no DataFrame
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         html_corpo += f"<div class='linha'>"
         html_corpo += f"<div class='coluna-fixa'><b>{unidade}</b><br><small style='color:gray'>{especialidade}</small></div>"
@@ -80,11 +96,13 @@ if df is not None:
         html_corpo += "</div></div>"
     html_corpo += "</div>"
 
-    # Junta tudo e renderiza via IFRAME (Garante que o HTML funcione)
+    # Junta tudo e renderiza via IFRAME
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     
     # Altura dinâmica baseada na quantidade de linhas
-    altura_box = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) * 90
+    # Usamos o nunique para contar quantas combinações de Unidade/Especialidade existem
+    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE']))
+    altura_box = total_linhas * 90
     components.html(html_final, height=max(altura_box, 800), scrolling=True)
 
 else:
