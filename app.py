@@ -75,13 +75,13 @@ if df is not None:
         .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
         .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; white-space: nowrap; }
         
-        .total-geral-box { background-color: #f8fafc; border: 2px solid #64748b; margin-top: 10px; }
+        /* Estilo para a caixa de total sem a borda extra */
+        .total-geral-txt { color: #1e293b; font-size: 16px; font-weight: bold; }
     </style>
     """
 
     html_corpo = "<div class='container-geral'>"
     
-    # Loop das Unidades
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         total_linha = len(g_esp)
         contagem_linha = g_esp['STATUS'].value_counts()
@@ -115,7 +115,7 @@ if df is not None:
             """
         html_corpo += "</div></div>"
 
-    # --- ADIÇÃO DO QUADRADO DE TOTAL GERAL ---
+    # --- TOTAL GERAL ---
     total_geral = len(df)
     contagem_geral = df['STATUS'].value_counts()
     
@@ -130,8 +130,8 @@ if df is not None:
 
     html_corpo += f"""
     <div class='linha'>
-        <div class='coluna-fixa total-geral-box'>
-            <b style='color:#1e293b; font-size:16px;'>TOTAL GERAL</b><br>
+        <div class='coluna-fixa'>
+            <span class='total-geral-txt'>TOTAL GERAL</span><br>
             <small style='color:#64748b; font-weight:bold;'>Total de Leitos: {total_geral}</small>
             {html_stats_geral}
         </div>
@@ -142,7 +142,7 @@ if df is not None:
 
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     
-    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1 # +1 para a linha do total
+    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1 
     altura_box = total_linhas * 110
     components.html(html_final, height=max(altura_box, 800), scrolling=True)
 
