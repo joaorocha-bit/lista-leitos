@@ -47,19 +47,41 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    st.title("🏥 Painel de Monitoramento dos Leitos")
-
+    # Ocultamos o título nativo do Streamlit para usar o título dentro do componente (melhor alinhamento)
     cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
 
-    # CSS unificado (Tela + Impressão)
     html_style = """
     <style>
-        body { font-family: sans-serif; margin: 0; background: white; padding-top: 50px; }
-        .btn-print {
-            position: fixed; top: 10px; right: 20px; z-index: 1000;
-            padding: 10px 20px; background: #1e293b; color: white;
-            border: none; border-radius: 6px; cursor: pointer; font-weight: bold;
+        body { font-family: sans-serif; margin: 0; background: white; padding: 20px; }
+        
+        /* Cabeçalho Alinhado */
+        .header-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 10px;
         }
+        .titulo-painel {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e293b;
+            margin: 0;
+        }
+        .btn-print {
+            margin-left: auto; /* Empurra o botão para a direita */
+            padding: 10px 20px;
+            background: #1e293b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .btn-print:hover { background: #334155; }
+
         .container-geral { display: inline-block; min-width: 100%; }
         .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; width: 100%; }
         .coluna-fixa { 
@@ -80,26 +102,23 @@ if df is not None:
         
         @media print {
             .btn-print { display: none !important; }
-            body { padding-top: 0; zoom: 85%; }
-            .coluna-fixa { position: relative !important; left: 0 !important; box-shadow: none !important; border-right: 1px solid #ddd !important; }
+            body { padding: 0; zoom: 80%; }
+            .header-container { border-bottom: 1px solid #000; }
+            .coluna-fixa { position: relative !important; left: 0 !important; box-shadow: none !important; }
             .linha { display: flex !important; page-break-inside: avoid !important; }
             @page { size: landscape; margin: 1cm; }
         }
     </style>
     """
 
-    # Script de Impressão simplificado
-    js_script = """
-    <script>
-        function imprimir() {
-            window.print();
-        }
-    </script>
+    # Conteúdo HTML
+    html_corpo = f"""
+    <div class="header-container">
+        <h1 class="titulo-painel">🏥 Painel de Monitoramento dos Leitos</h1>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir Painel</button>
+    </div>
+    <div class="container-geral">
     """
-
-    # Construção do conteúdo HTML
-    html_corpo = f"<button class='btn-print' onclick='imprimir()'>🖨️ Imprimir Painel</button>"
-    html_corpo += "<div class='container-geral'>"
     
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
         total_linha = len(g_esp)
@@ -129,10 +148,10 @@ if df is not None:
     html_corpo += f"<div class='linha'><div class='coluna-fixa'><b>TOTAL GERAL</b><br><small>Total: {total_g}</small><div class='stats-container'>{stats_g}</div></div><div class='wrapper-cards'></div></div></div>"
 
     # Renderização Final
-    html_final = f"<html><head>{html_style}{js_script}</head><body>{html_corpo}</body></html>"
-    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1
+    html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
+    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 2
     
-    components.html(html_final, height=max(total_linhas * 115, 800), scrolling=True)
+    components.html(html_final, height=max(total_linhas * 120, 900), scrolling=True)
 
 else:
     st.error("Erro ao carregar dados.")
