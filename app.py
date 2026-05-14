@@ -59,7 +59,7 @@ if df is not None:
         .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; }
         .coluna-fixa { 
             position: sticky; left: 0; z-index: 100; 
-            min-width: 250px; /* Aumentado para evitar quebras de linha nas métricas */
+            min-width: 250px; 
             background: white; padding: 10px;
             border-right: 2px solid #edf2f7; box-shadow: 2px 0 5px rgba(0,0,0,0.05);
         }
@@ -74,20 +74,23 @@ if df is not None:
         
         .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
         .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; color: white; white-space: nowrap; }
+        
+        .total-geral-box { background-color: #f8fafc; border: 2px solid #64748b; margin-top: 10px; }
     </style>
     """
 
     html_corpo = "<div class='container-geral'>"
+    
+    # Loop das Unidades
     for (unidade, especialidade), g_esp in df.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
-        
-        total = len(g_esp)
-        contagem = g_esp['STATUS'].value_counts()
+        total_linha = len(g_esp)
+        contagem_linha = g_esp['STATUS'].value_counts()
         
         html_stats = "<div class='stats-container'>"
         for status_nome, cor_hex in cores.items():
-            qtd = contagem.get(status_nome, 0)
+            qtd = contagem_linha.get(status_nome, 0)
             if qtd > 0:
-                porcentagem = (qtd / total) * 100
+                porcentagem = (qtd / total_linha) * 100
                 texto_cor = "black" if status_nome in ['AMARELO', 'CINZA'] else "white"
                 html_stats += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor};'>{qtd} ({porcentagem:.0f}%)</span>"
         html_stats += "</div>"
@@ -111,11 +114,35 @@ if df is not None:
                 </div>
             """
         html_corpo += "</div></div>"
+
+    # --- ADIÇÃO DO QUADRADO DE TOTAL GERAL ---
+    total_geral = len(df)
+    contagem_geral = df['STATUS'].value_counts()
+    
+    html_stats_geral = "<div class='stats-container'>"
+    for status_nome, cor_hex in cores.items():
+        qtd_g = contagem_geral.get(status_nome, 0)
+        if qtd_g > 0:
+            porcentagem_g = (qtd_g / total_geral) * 100
+            texto_cor_g = "black" if status_nome in ['AMARELO', 'CINZA'] else "white"
+            html_stats_geral += f"<span class='stat-item' style='background-color:{cor_hex}; color:{texto_cor_g};'>{qtd_g} ({porcentagem_g:.0f}%)</span>"
+    html_stats_geral += "</div>"
+
+    html_corpo += f"""
+    <div class='linha'>
+        <div class='coluna-fixa total-geral-box'>
+            <b style='color:#1e293b; font-size:16px;'>TOTAL GERAL</b><br>
+            <small style='color:#64748b; font-weight:bold;'>Total de Leitos: {total_geral}</small>
+            {html_stats_geral}
+        </div>
+        <div class='wrapper-cards'></div>
+    </div>"""
+    
     html_corpo += "</div>"
 
     html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
     
-    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE']))
+    total_linhas = len(df.groupby(['UNIDADE', 'ESPECIALIDADE'])) + 1 # +1 para a linha do total
     altura_box = total_linhas * 110
     components.html(html_final, height=max(altura_box, 800), scrolling=True)
 
