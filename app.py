@@ -394,7 +394,7 @@ renderizar();
 </body>
 </html>"""
 
-    components.html(html, height=900, scrolling=False)
+    components.html(html, height=850, scrolling=False)
 
 else:
     st.error("Erro ao carregar dados.")
