@@ -92,6 +92,7 @@ if df is not None:
     padding: 8px 14px;
     border-bottom: 2px solid #e2e8f0;
     background: #fff;
+    z-index: 20;
   }}
   .topbar .titulo {{
     font-size: 17px;
@@ -136,15 +137,7 @@ if df is not None:
     outline: none;
     width: 100%;
   }}
-  .filtro-group select:focus,
-  .filtro-group input[type=text]:focus {{
-    border-color: #94a3b8;
-  }}
-  .fg-unidade      {{ flex: 1.2; }}
-  .fg-especialidade{{ flex: 2; }}
-  .fg-leito        {{ flex: 0.7; min-width: 80px; max-width: 110px; }}
-  .fg-tipo         {{ flex: 1.5; }}
-
+  
   .btn-limpar, .btn-print {{
     height: 28px;
     border: none;
@@ -157,15 +150,14 @@ if df is not None:
     padding: 0 12px;
   }}
   .btn-limpar {{ background: #f1f5f9; color: #475569; }}
-  .btn-limpar:hover {{ background: #e2e8f0; }}
   .btn-print  {{ background: #1e293b; color: #fff; }}
-  .btn-print:hover  {{ background: #334155; }}
 
   /* ── Painel de leitos ── */
   .scroll-area {{
     flex: 1;
     overflow-y: auto;
     overflow-x: auto;
+    padding-bottom: 60px; /* Espaço para não cobrir o último item com a legenda */
   }}
   .container-geral {{ display: inline-block; min-width: 100%; }}
   .linha {{ display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: #fff; }}
@@ -182,6 +174,7 @@ if df is not None:
   .stats-container {{ margin-top: 6px; display: flex; flex-wrap: wrap; gap: 3px; }}
   .stat-item {{ font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }}
   .wrapper-cards {{ display: flex; flex-wrap: nowrap; gap: 8px; padding: 10px; }}
+  
   .card {{
     flex: 0 0 90px; width: 90px;
     border: 1px solid #e2e8f0; border-radius: 6px;
@@ -190,12 +183,51 @@ if df is not None:
   .leito-num {{ font-size: 13px; font-weight: 700; color: #1e293b; }}
   .leito-tipo {{ font-size: 8px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }}
   .status-bar {{ height: 5px; border-radius: 3px; margin: 7px 10% 0; }}
-  .empty-msg {{ padding: 40px; color: #94a3b8; font-size: 14px; }}
+
+  /* ── LEGENDA NO RODAPÉ ── */
+  .legenda-footer {{
+    flex-shrink: 0;
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 20;
+  }}
+  .legenda-titulo {{
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }}
+  .legenda-itens {{
+    display: flex;
+    gap: 12px;
+  }}
+  .legenda-item {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    padding: 4px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e293b;
+  }}
+  .legenda-cor {{
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }}
 
   @media print {{
     body {{ overflow: visible; height: auto; }}
-    .topbar .btn-print, .topbar .btn-limpar {{ display: none; }}
-    .scroll-area {{ overflow: visible; }}
+    .topbar, .legenda-footer {{ display: none !important; }}
+    .scroll-area {{ overflow: visible; padding-bottom: 0; }}
     .coluna-fixa {{ position: relative !important; box-shadow: none !important; }}
     @page {{ size: landscape; margin: 1cm; }}
   }}
@@ -203,9 +235,8 @@ if df is not None:
 </head>
 <body>
 
-<!-- BARRA DE TOPO -->
 <div class="topbar">
-  <span class="titulo">🏥 Painel de Monitoramento dos Leitos HMV</span>
+  <span class="titulo">🏥 Painel de Monitoramento HMV</span>
   <div class="sep"></div>
   <div class="filtros">
     <div class="filtro-group fg-unidade">
@@ -238,12 +269,23 @@ if df is not None:
   <button class="btn-print"  onclick="window.print()">🖨️ Imprimir</button>
 </div>
 
-<!-- PAINEL -->
 <div class="scroll-area">
   <div class="container-geral" id="painel"></div>
 </div>
 
+<div class="legenda-footer">
+  <div class="legenda-titulo">Legenda:</div>
+  <div class="legenda-itens">
+    <div class="legenda-item"><div class="legenda-cor" style="background:#22c55e"></div> Ativo</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#eab308"></div> Manutenção</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#ef4444"></div> Inativo</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#1c1c1c"></div> Bloqueado</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#cbd5e1"></div> Outros</div>
+  </div>
+</div>
+
 <script>
+// ... (mantenha o seu script JavaScript original aqui, ele funcionará normalmente)
 const DADOS  = {dados_json};
 const CORES  = {cores_json};
 const ORDEM  = {json.dumps(opcoes_unidade)};
@@ -277,7 +319,6 @@ function renderizar() {{
     return true;
   }});
 
-  // Agrupa por UNIDADE > ESPECIALIDADE respeitando ordem
   const grupos = {{}};
   ORDEM.forEach(u => {{ grupos[u] = {{}}; }});
   filtrado.forEach(r => {{
@@ -295,7 +336,6 @@ function renderizar() {{
     Object.entries(esps).forEach(([esp, leitos]) => {{
       if (!leitos.length) return;
       totalG += leitos.length;
-
       const cnt = {{}};
       leitos.forEach(l => {{ cnt[l.STATUS] = (cnt[l.STATUS]||0)+1; }});
       Object.entries(cnt).forEach(([s,n]) => {{ contG[s] = (contG[s]||0)+n; }});
@@ -331,7 +371,6 @@ function renderizar() {{
   if (!html) {{
     html = '<div class="empty-msg">Nenhum leito encontrado para os filtros selecionados.</div>';
   }} else {{
-    // Total geral
     const statsG = Object.entries(CORES)
       .filter(([s]) => contG[s])
       .map(([s,c]) => {{
@@ -341,17 +380,15 @@ function renderizar() {{
       }}).join('');
     html += `<div class="linha" style="border-bottom:none">
       <div class="coluna-fixa">
-        <div class="unidade-nome">TOTAL GERAL DE LEITOS</div>
+        <div class="unidade-nome">TOTAL GERAL</div>
         <div class="especialidade-nome">Total: ${{totalG}}</div>
         <div class="stats-container">${{statsG}}</div>
       </div>
       <div class="wrapper-cards"></div>
     </div>`;
   }}
-
   document.getElementById('painel').innerHTML = html;
 }}
-
 renderizar();
 </script>
 </body>
