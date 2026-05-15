@@ -236,7 +236,7 @@ if df is not None:
 <body>
 
 <div class="topbar">
-  <span class="titulo">🏥 Painel de Monitoramento HMV</span>
+  <span class="titulo">🏥 Painel de Monitoramento Leitos HMV</span>
   <div class="sep"></div>
   <div class="filtros">
     <div class="filtro-group fg-unidade">
