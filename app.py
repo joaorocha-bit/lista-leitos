@@ -157,7 +157,7 @@ if df is not None:
     flex: 1;
     overflow-y: auto;
     overflow-x: auto;
-    padding-bottom: 60px; /* Espaço para não cobrir o último item com a legenda */
+    padding-bottom: 10px; /* Espaço para não cobrir o último item com a legenda */
   }}
   .container-geral {{ display: inline-block; min-width: 100%; }}
   .linha {{ display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: #fff; }}
