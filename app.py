@@ -99,7 +99,7 @@ if df is not None:
     html_corpo = f"""
     <div class="viewport">
         <div class="header-container">
-            <h1 class="titulo-painel">Painel de Monitoramento dos Leitos</h1>
+            <h1 class="titulo-painel">🏥 Painel de Monitoramento dos Leitos HMV</h1>
             <button class="btn-print" onclick="window.print()">🖨️ Imprimir Painel</button>
         </div>
         <div class="scroll-area">
@@ -124,7 +124,7 @@ if df is not None:
     
     html_corpo += f"""
                 <div class='linha' style='border-bottom: none;'>
-                    <div class='coluna-fixa'><b>TOTAL GERAL</b><br><small>Total: {total_g}</small><div class='stats-container'>{stats_g}</div></div>
+                    <div class='coluna-fixa'><b>TOTAL GERAL DE LEITOS</b><br><small>Total: {total_g}</small><div class='stats-container'>{stats_g}</div></div>
                     <div class='wrapper-cards'></div>
                 </div>
             </div>
