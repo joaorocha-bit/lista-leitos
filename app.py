@@ -99,7 +99,7 @@ if df is not None:
     html_corpo = f"""
     <div class="viewport">
         <div class="header-container">
-            <h1 class="titulo-painel">🏥 Painel de Monitoramento dos Leitos</h1>
+            <h1 class="titulo-painel">Painel de Monitoramento dos Leitos</h1>
             <button class="btn-print" onclick="window.print()">🖨️ Imprimir Painel</button>
         </div>
         <div class="scroll-area">
