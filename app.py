@@ -6,10 +6,13 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
+# Remove TODA a UI padrão do Streamlit — título, filtros e botão ficam dentro do HTML
 st.markdown("""
     <style>
-        .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; }
+        .block-container { padding: 0 !important; margin: 0 !important; }
         header[data-testid="stHeader"] { display: none !important; }
+        section[data-testid="stMain"] > div { padding: 0 !important; }
+        .stApp { overflow: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -23,10 +26,10 @@ def carregar_dados():
         df_raw = pd.read_csv(StringIO(conteudo))
 
         df_final = pd.DataFrame()
-        df_final['UNIDADE'] = df_raw.iloc[:, 1].astype(str).str.strip()
-        df_final['ESPECIALIDADE'] = df_raw.iloc[:, 2].astype(str)
-        df_final['PARA'] = df_raw.iloc[:, 5].astype(str)
-        df_final['TIPO'] = df_raw.iloc[:, 9].astype(str)
+        df_final['UNIDADE']      = df_raw.iloc[:, 1].astype(str).str.strip()
+        df_final['ESPECIALIDADE']= df_raw.iloc[:, 2].astype(str)
+        df_final['PARA']         = df_raw.iloc[:, 5].astype(str)
+        df_final['TIPO']         = df_raw.iloc[:, 9].astype(str)
 
         if df_raw.shape[1] >= 22:
             df_final['STATUS'] = df_raw.iloc[:, 21].fillna('CINZA').astype(str).str.upper().str.strip()
@@ -34,10 +37,10 @@ def carregar_dados():
             df_final['STATUS'] = 'CINZA'
 
         ordem_unidades = [
-            "A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2", "D3", "E1", "E3",
-            "F3 (UNIQUE)", "G3", "5º B", "9º MATERNO", "10º MATERNO",
-            "CTIA 1º", "CTIA A1", "CTIA A2", "CTIA A3", "CTIA 3A",
-            "CTIA 5A", "CTIA 4A", "UTI PED", "UTI NEO"
+            "A1","A2","B1","B2","C1","C2","D1","D2","D3","E1","E3",
+            "F3 (UNIQUE)","G3","5º B","9º MATERNO","10º MATERNO",
+            "CTIA 1º","CTIA A1","CTIA A2","CTIA A3","CTIA 3A",
+            "CTIA 5A","CTIA 4A","UTI PED","UTI NEO"
         ]
         df_final['UNIDADE'] = pd.Categorical(df_final['UNIDADE'], categories=ordem_unidades, ordered=True)
         df_final = df_final.sort_values(by='UNIDADE')
@@ -48,208 +51,313 @@ def carregar_dados():
 df = carregar_dados()
 
 if df is not None:
-    cores = {'VERDE': '#22c55e', 'AMARELO': '#eab308', 'VERMELHO': '#ef4444', 'CINZA': '#cbd5e1', 'PRETO': '#1c1c1c'}
+    cores = {
+        'VERDE':   '#22c55e',
+        'AMARELO': '#eab308',
+        'VERMELHO':'#ef4444',
+        'CINZA':   '#cbd5e1',
+        'PRETO':   '#1c1c1c'
+    }
 
+    # Listas para os <select> e <datalist>
     opcoes_unidade       = sorted([u for u in df['UNIDADE'].cat.categories if u in df['UNIDADE'].values])
     opcoes_especialidade = sorted(df['ESPECIALIDADE'].dropna().unique().tolist())
     opcoes_tipo          = sorted(df['TIPO'].dropna().unique().tolist())
 
-    # ── CSS global dos filtros ───────────────────────────────────────────────────
-    st.markdown("""
-        <style>
-        /* Linha de colunas */
-        div[data-testid="stHorizontalBlock"] {
-            gap: 6px !important;
-            align-items: flex-end !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        /* Labels */
-        div[data-testid="stMultiSelect"] label,
-        div[data-testid="stTextInput"]   label {
-            font-size: 10px !important;
-            font-weight: 700 !important;
-            color: #64748b !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.06em !important;
-            margin-bottom: 1px !important;
-        }
-        /* Controles */
-        div[data-testid="stMultiSelect"] > div > div,
-        div[data-testid="stTextInput"] input {
-            min-height: 28px !important;
-            max-height: 28px !important;
-            font-size: 12px !important;
-            padding: 2px 8px !important;
-            border-radius: 5px !important;
-            border-color: #e2e8f0 !important;
-            overflow: hidden !important;
-        }
-        /* Tags */
-        div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-            height: 16px !important;
-            font-size: 10px !important;
-            padding: 0 4px !important;
-        }
-        /* Botão limpar */
-        div[data-testid="stButton"] button {
-            height: 28px !important;
-            font-size: 11px !important;
-            padding: 0 10px !important;
-            border-radius: 5px !important;
-            background: #1e293b !important;
-            color: white !important;
-            border: none !important;
-            font-weight: 600 !important;
-            width: 100% !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    def opts(lista):
+        return "".join(f'<option value="{v}">{v}</option>' for v in lista)
 
-    # ── Título + linha de filtros (tudo junto, sem gap entre eles) ───────────────
-    st.markdown("""
-        <div style="
-            display: flex;
-            align-items: center;
-            padding: 12px 0 10px 0;
-            border-bottom: 2px solid #edf2f7;
-            margin-bottom: 6px;
-        ">
-            <span style="font-size: 20px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px;">
-                🏥 Painel de Monitoramento dos Leitos HMV
-            </span>
+    # Serializa os dados para JSON para o filtro em JS
+    import json
+    registros = df[['UNIDADE','ESPECIALIDADE','PARA','TIPO','STATUS']].copy()
+    registros['UNIDADE'] = registros['UNIDADE'].astype(str)
+    dados_json = json.dumps(registros.to_dict(orient='records'), ensure_ascii=False)
+
+    cores_json = json.dumps(cores)
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }}
+
+  /* ── Barra de topo ── */
+  .topbar {{
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 2px solid #e2e8f0;
+    background: #fff;
+  }}
+  .topbar .titulo {{
+    font-size: 17px;
+    font-weight: 800;
+    color: #1e293b;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }}
+  .sep {{ width: 1px; height: 28px; background: #e2e8f0; flex-shrink: 0; }}
+
+  /* ── Filtros ── */
+  .filtros {{
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }}
+  .filtro-group {{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }}
+  .filtro-group label {{
+    font-size: 9px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+  }}
+  .filtro-group select,
+  .filtro-group input[type=text] {{
+    height: 28px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: #1e293b;
+    background: #fff;
+    outline: none;
+    width: 100%;
+  }}
+  .filtro-group select:focus,
+  .filtro-group input[type=text]:focus {{
+    border-color: #94a3b8;
+  }}
+  .fg-unidade      {{ flex: 1.2; }}
+  .fg-especialidade{{ flex: 2; }}
+  .fg-leito        {{ flex: 0.7; min-width: 80px; max-width: 110px; }}
+  .fg-tipo         {{ flex: 1.5; }}
+
+  .btn-limpar, .btn-print {{
+    height: 28px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 0 12px;
+  }}
+  .btn-limpar {{ background: #f1f5f9; color: #475569; }}
+  .btn-limpar:hover {{ background: #e2e8f0; }}
+  .btn-print  {{ background: #1e293b; color: #fff; }}
+  .btn-print:hover  {{ background: #334155; }}
+
+  /* ── Painel de leitos ── */
+  .scroll-area {{
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+  }}
+  .container-geral {{ display: inline-block; min-width: 100%; }}
+  .linha {{ display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: #fff; }}
+  .coluna-fixa {{
+    position: sticky; left: 0; z-index: 10;
+    min-width: 220px; max-width: 220px;
+    background: #fff;
+    padding: 10px 12px;
+    border-right: 2px solid #edf2f7;
+    box-shadow: 2px 0 5px rgba(0,0,0,.05);
+  }}
+  .unidade-nome {{ font-size: 15px; font-weight: 700; color: #1e293b; }}
+  .especialidade-nome {{ font-size: 11px; color: #94a3b8; margin-top: 1px; }}
+  .stats-container {{ margin-top: 6px; display: flex; flex-wrap: wrap; gap: 3px; }}
+  .stat-item {{ font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }}
+  .wrapper-cards {{ display: flex; flex-wrap: nowrap; gap: 8px; padding: 10px; }}
+  .card {{
+    flex: 0 0 90px; width: 90px;
+    border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 8px 4px; text-align: center; background: #fff;
+  }}
+  .leito-num {{ font-size: 13px; font-weight: 700; color: #1e293b; }}
+  .leito-tipo {{ font-size: 8px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }}
+  .status-bar {{ height: 5px; border-radius: 3px; margin: 7px 10% 0; }}
+  .empty-msg {{ padding: 40px; color: #94a3b8; font-size: 14px; }}
+
+  @media print {{
+    body {{ overflow: visible; height: auto; }}
+    .topbar .btn-print, .topbar .btn-limpar {{ display: none; }}
+    .scroll-area {{ overflow: visible; }}
+    .coluna-fixa {{ position: relative !important; box-shadow: none !important; }}
+    @page {{ size: landscape; margin: 1cm; }}
+  }}
+</style>
+</head>
+<body>
+
+<!-- BARRA DE TOPO -->
+<div class="topbar">
+  <span class="titulo">🏥 Painel de Monitoramento dos Leitos HMV</span>
+  <div class="sep"></div>
+  <div class="filtros">
+    <div class="filtro-group fg-unidade">
+      <label>Unidade</label>
+      <select id="f-unidade" multiple size="1" onchange="renderizar()">
+        <option value="">Todas</option>
+        {opts(opcoes_unidade)}
+      </select>
+    </div>
+    <div class="filtro-group fg-especialidade">
+      <label>Especialidade</label>
+      <select id="f-especialidade" multiple size="1" onchange="renderizar()">
+        <option value="">Todas</option>
+        {opts(opcoes_especialidade)}
+      </select>
+    </div>
+    <div class="filtro-group fg-leito">
+      <label>Leito</label>
+      <input type="text" id="f-leito" placeholder="Ex: 101" oninput="renderizar()">
+    </div>
+    <div class="filtro-group fg-tipo">
+      <label>Tipo</label>
+      <select id="f-tipo" multiple size="1" onchange="renderizar()">
+        <option value="">Todos</option>
+        {opts(opcoes_tipo)}
+      </select>
+    </div>
+  </div>
+  <button class="btn-limpar" onclick="limpar()">✕ Limpar</button>
+  <button class="btn-print"  onclick="window.print()">🖨️ Imprimir</button>
+</div>
+
+<!-- PAINEL -->
+<div class="scroll-area">
+  <div class="container-geral" id="painel"></div>
+</div>
+
+<script>
+const DADOS  = {dados_json};
+const CORES  = {cores_json};
+const ORDEM  = {json.dumps(opcoes_unidade)};
+
+function getSelected(id) {{
+  const sel = document.getElementById(id);
+  return Array.from(sel.selectedOptions).map(o => o.value).filter(v => v !== "");
+}}
+
+function limpar() {{
+  ['f-unidade','f-especialidade','f-tipo'].forEach(id => {{
+    const sel = document.getElementById(id);
+    Array.from(sel.options).forEach(o => o.selected = false);
+    sel.options[0].selected = true;
+  }});
+  document.getElementById('f-leito').value = '';
+  renderizar();
+}}
+
+function renderizar() {{
+  const fUnidade  = getSelected('f-unidade');
+  const fEsp      = getSelected('f-especialidade');
+  const fLeito    = document.getElementById('f-leito').value.trim().toLowerCase();
+  const fTipo     = getSelected('f-tipo');
+
+  let filtrado = DADOS.filter(r => {{
+    if (fUnidade.length && !fUnidade.includes(r.UNIDADE))       return false;
+    if (fEsp.length    && !fEsp.includes(r.ESPECIALIDADE))      return false;
+    if (fLeito         && !r.PARA.toLowerCase().includes(fLeito)) return false;
+    if (fTipo.length   && !fTipo.includes(r.TIPO))              return false;
+    return true;
+  }});
+
+  // Agrupa por UNIDADE > ESPECIALIDADE respeitando ordem
+  const grupos = {{}};
+  ORDEM.forEach(u => {{ grupos[u] = {{}}; }});
+  filtrado.forEach(r => {{
+    if (!grupos[r.UNIDADE]) grupos[r.UNIDADE] = {{}};
+    if (!grupos[r.UNIDADE][r.ESPECIALIDADE]) grupos[r.UNIDADE][r.ESPECIALIDADE] = [];
+    grupos[r.UNIDADE][r.ESPECIALIDADE].push(r);
+  }});
+
+  let html = '';
+  let totalG = 0, contG = {{}};
+
+  ORDEM.forEach(unidade => {{
+    const esps = grupos[unidade];
+    if (!esps) return;
+    Object.entries(esps).forEach(([esp, leitos]) => {{
+      if (!leitos.length) return;
+      totalG += leitos.length;
+
+      const cnt = {{}};
+      leitos.forEach(l => {{ cnt[l.STATUS] = (cnt[l.STATUS]||0)+1; }});
+      Object.entries(cnt).forEach(([s,n]) => {{ contG[s] = (contG[s]||0)+n; }});
+
+      const stats = Object.entries(CORES)
+        .filter(([s]) => cnt[s])
+        .map(([s,c]) => {{
+          const pct = Math.round(cnt[s]/leitos.length*100);
+          const txtColor = ['AMARELO','CINZA'].includes(s) ? '#000' : '#fff';
+          return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{cnt[s]}} (${{pct}}%)</span>`;
+        }}).join('');
+
+      const cards = leitos.map(r => {{
+        const cor = CORES[r.STATUS] || '#cbd5e1';
+        return `<div class="card">
+          <div class="leito-num">${{r.PARA}}</div>
+          <div class="leito-tipo">${{r.TIPO}}</div>
+          <div class="status-bar" style="background:${{cor}}"></div>
+        </div>`;
+      }}).join('');
+
+      html += `<div class="linha">
+        <div class="coluna-fixa">
+          <div class="unidade-nome">${{unidade}}</div>
+          <div class="especialidade-nome">${{esp}}</div>
+          <div class="stats-container">${{stats}}</div>
         </div>
-    """, unsafe_allow_html=True)
+        <div class="wrapper-cards">${{cards}}</div>
+      </div>`;
+    }});
+  }});
 
-    col1, col2, col3, col4, col5 = st.columns([2, 2.5, 0.9, 2, 0.45])
-    with col1:
-        sel_unidade = st.multiselect("Unidade", opcoes_unidade, placeholder="Todas")
-    with col2:
-        sel_especialidade = st.multiselect("Especialidade", opcoes_especialidade, placeholder="Todas")
-    with col3:
-        sel_leito = st.text_input("Leito", placeholder="Ex: 101")
-    with col4:
-        sel_tipo = st.multiselect("Tipo", opcoes_tipo, placeholder="Todos")
-    with col5:
-        st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-        limpar = st.button("✕", use_container_width=True)
+  if (!html) {{
+    html = '<div class="empty-msg">Nenhum leito encontrado para os filtros selecionados.</div>';
+  }} else {{
+    // Total geral
+    const statsG = Object.entries(CORES)
+      .filter(([s]) => contG[s])
+      .map(([s,c]) => {{
+        const pct = Math.round(contG[s]/totalG*100);
+        const txtColor = ['AMARELO','CINZA'].includes(s) ? '#000' : '#fff';
+        return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{contG[s]}} (${{pct}}%)</span>`;
+      }}).join('');
+    html += `<div class="linha" style="border-bottom:none">
+      <div class="coluna-fixa">
+        <div class="unidade-nome">TOTAL GERAL DE LEITOS</div>
+        <div class="especialidade-nome">Total: ${{totalG}}</div>
+        <div class="stats-container">${{statsG}}</div>
+      </div>
+      <div class="wrapper-cards"></div>
+    </div>`;
+  }}
 
-    st.markdown("<div style='border-bottom: 2px solid #edf2f7; margin-bottom: 0;'></div>", unsafe_allow_html=True)
+  document.getElementById('painel').innerHTML = html;
+}}
 
-    if limpar:
-        st.rerun()
+renderizar();
+</script>
+</body>
+</html>"""
 
-    # ── Filtrar ──────────────────────────────────────────────────────────────────
-    df_f = df.copy()
-    if sel_unidade:
-        df_f = df_f[df_f['UNIDADE'].isin(sel_unidade)]
-    if sel_especialidade:
-        df_f = df_f[df_f['ESPECIALIDADE'].isin(sel_especialidade)]
-    if sel_leito.strip():
-        df_f = df_f[df_f['PARA'].str.contains(sel_leito.strip(), case=False, na=False)]
-    if sel_tipo:
-        df_f = df_f[df_f['TIPO'].isin(sel_tipo)]
-
-    # ── HTML do painel ───────────────────────────────────────────────────────────
-    html_style = """
-    <style>
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: white; font-family: sans-serif; }
-        .viewport { height: 100vh; display: flex; flex-direction: column; }
-        /* Cabeçalho interno com botão imprimir */
-        .painel-header {
-            display: flex; align-items: center;
-            padding: 10px 12px 8px 12px;
-            border-bottom: 2px solid #edf2f7;
-            flex-shrink: 0;
-        }
-        .painel-titulo { font-size: 18px; font-weight: 800; color: #1e293b; }
-        .btn-print {
-            margin-left: auto;
-            padding: 5px 14px;
-            background: #1e293b;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 13px;
-        }
-        .scroll-area { flex-grow: 1; overflow-y: auto; overflow-x: auto; padding-bottom: 0; }
-        .container-geral { display: inline-block; min-width: 100%; }
-        .linha { display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: white; width: 100%; }
-        .coluna-fixa { position: sticky; left: 0; z-index: 100; min-width: 250px; background: white; padding: 10px; border-right: 2px solid #edf2f7; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-        .wrapper-cards { display: flex; flex-wrap: nowrap; gap: 8px; padding: 10px; }
-        .card { flex: 0 0 100px; width: 100px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 5px; text-align: center; background: white; }
-        .leito { font-size: 14px; font-weight: bold; }
-        .tipo { font-size: 9px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
-        .status-bar { height: 6px; border-radius: 3px; margin-top: 8px; width: 80%; margin-left: 10%; }
-        .stats-container { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
-        .stat-item { font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; }
-        .empty-msg { padding: 40px; color: #94a3b8; font-size: 15px; }
-        @media print {
-            .viewport { height: auto; overflow: visible; }
-            .scroll-area { overflow: visible; }
-            .btn-print { display: none !important; }
-            .coluna-fixa { position: relative !important; left: 0 !important; box-shadow: none !important; }
-            @page { size: landscape; margin: 1cm; }
-        }
-    </style>
-    """
-
-    html_corpo = """
-    <div class="viewport">
-        <div class="scroll-area">
-            <div class="container-geral">
-    """
-
-    if df_f.empty:
-        html_corpo += "<div class='empty-msg'>Nenhum leito encontrado para os filtros selecionados.</div>"
-    else:
-        for (unidade, especialidade), g_esp in df_f.groupby(['UNIDADE', 'ESPECIALIDADE'], sort=False):
-            total_linha = len(g_esp)
-            cnt = g_esp['STATUS'].value_counts()
-            stats = "".join([
-                f"<span class='stat-item' style='background:{cores[s]};color:{'#000' if s in ['AMARELO','CINZA'] else '#fff'};'>"
-                f"{cnt.get(s,0)} ({cnt.get(s,0)/total_linha*100:.0f}%)</span>"
-                for s in cores if cnt.get(s, 0) > 0
-            ])
-            html_corpo += (
-                f"<div class='linha'>"
-                f"<div class='coluna-fixa'><b>{unidade}</b><br>"
-                f"<small style='color:gray'>{especialidade}</small>"
-                f"<div class='stats-container'>{stats}</div></div>"
-                f"<div class='wrapper-cards'>"
-            )
-            for _, row in g_esp.iterrows():
-                cor = cores.get(row['STATUS'], '#cbd5e1')
-                html_corpo += (
-                    f"<div class='card'>"
-                    f"<div class='leito'>{row['PARA']}</div>"
-                    f"<div class='tipo'>{row['TIPO']}</div>"
-                    f"<div class='status-bar' style='background:{cor};'></div>"
-                    f"</div>"
-                )
-            html_corpo += "</div></div>"
-
-        total_g = len(df_f)
-        cnt_g = df_f['STATUS'].value_counts()
-        stats_g = "".join([
-            f"<span class='stat-item' style='background:{cores[s]};color:{'#000' if s in ['AMARELO','CINZA'] else '#fff'};'>"
-            f"{cnt_g.get(s,0)} ({cnt_g.get(s,0)/total_g*100:.0f}%)</span>"
-            for s in cores if cnt_g.get(s, 0) > 0
-        ])
-        html_corpo += (
-            f"<div class='linha' style='border-bottom:none;'>"
-            f"<div class='coluna-fixa'><b>TOTAL GERAL DE LEITOS</b><br>"
-            f"<small>Total: {total_g}</small>"
-            f"<div class='stats-container'>{stats_g}</div></div>"
-            f"<div class='wrapper-cards'></div></div>"
-        )
-
-    html_corpo += "</div></div></div>"
-    html_final = f"<html><head>{html_style}</head><body>{html_corpo}</body></html>"
-
-    components.html(html_final, height=760, scrolling=False)
+    components.html(html, height=820, scrolling=False)
 
 else:
     st.error("Erro ao carregar dados.")
