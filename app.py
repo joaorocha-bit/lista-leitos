@@ -280,7 +280,7 @@ if df is not None:
     <div class="legenda-item"><div class="legenda-cor" style="background:#eab308"></div> Manutenção</div>
     <div class="legenda-item"><div class="legenda-cor" style="background:#ef4444"></div> Inativo</div>
     <div class="legenda-item"><div class="legenda-cor" style="background:#1c1c1c"></div> Bloqueado</div>
-    <div class="legenda-item"><div class="legenda-cor" style="background:#cbd5e1"></div> Outros</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#cbd5e1"></div> Não Informado</div>
   </div>
 </div>
 
