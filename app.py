@@ -348,12 +348,10 @@ function renderizar() {{
           return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{cnt[s]}} (${{pct}}%)</span>`;
         }}).join('');
 
-// Quebra os leitos em blocos para formar múltiplas linhas anexadas
       let blocosCardsHtml = '<div>'; 
       const LIMITE = 20; // Aqui você define o limite máximo de leitos por linha
 
       for (let i = 0; i < leitos.length; i += LIMITE) {
-        // Separa um "pedaço" com no máximo 20 leitos
         const pedaco = leitos.slice(i, i + LIMITE);
         
         const cardsHtml = pedaco.map(r => {
@@ -365,8 +363,6 @@ function renderizar() {{
           </div>`;
         }).join('');
 
-        // Ajuste de padding: Se houver mais de uma linha da mesma área, 
-        // reduzimos o espaçamento vertical para elas ficarem visualmente "juntas".
         const paddingTop = (i === 0) ? '10px' : '4px';
         const paddingBottom = (i + LIMITE >= leitos.length) ? '10px' : '4px';
         
