@@ -285,6 +285,7 @@ if df is not None:
 </div>
 
 <script>
+<script>
 // ... (mantenha o seu script JavaScript original aqui, ele funcionará normalmente)
 const DADOS  = {dados_json};
 const CORES  = {cores_json};
@@ -348,35 +349,37 @@ function renderizar() {{
           return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{cnt[s]}} (${{pct}}%)</span>`;
         }}).join('');
 
+      // ── NOVO BLOCO DO SEU COMPONENTE DE LEITOS (LIMITADO A 20) ──
       let blocosCardsHtml = '<div>'; 
-      const LIMITE = 20; // Aqui você define o limite máximo de leitos por linha
+      const LIMITE = 20;
 
-      for (let i = 0; i < leitos.length; i += LIMITE) {
+      for (let i = 0; i < leitos.length; i += LIMITE) {{
         const pedaco = leitos.slice(i, i + LIMITE);
         
-        const cardsHtml = pedaco.map(r => {
+        const cardsHtml = pedaco.map(r => {{
           const cor = CORES[r.STATUS] || '#cbd5e1';
           return `<div class="card">
-            <div class="leito-num">${r.PARA}</div>
-            <div class="leito-tipo">${r.TIPO}</div>
-            <div class="status-bar" style="background:${cor}"></div>
+            <div class="leito-num">${{r.PARA}}</div>
+            <div class="leito-tipo">${{r.TIPO}}</div>
+            <div class="status-bar" style="background:${{cor}}"></div>
           </div>`;
-        }).join('');
+        }}).join('');
 
         const paddingTop = (i === 0) ? '10px' : '4px';
         const paddingBottom = (i + LIMITE >= leitos.length) ? '10px' : '4px';
         
-        blocosCardsHtml += `<div class="wrapper-cards" style="padding-top: ${paddingTop}; padding-bottom: ${paddingBottom};">${cardsHtml}</div>`;
-      }
+        blocosCardsHtml += `<div class="wrapper-cards" style="padding-top: ${{paddingTop}}; padding-bottom: ${{paddingBottom}};">${{cardsHtml}}</div>`;
+      }}
       blocosCardsHtml += '</div>';
+      // ────────────────────────────────────────────────────────────
 
       html += `<div class="linha">
         <div class="coluna-fixa">
-          <div class="unidade-nome">${unidade}</div>
-          <div class="especialidade-nome">${esp}</div>
-          <div class="stats-container">${stats}</div>
+          <div class="unidade-nome">${{unidade}}</div>
+          <div class="especialidade-nome">${{esp}}</div>
+          <div class="stats-container">${{stats}}</div>
         </div>
-        ${blocosCardsHtml}
+        ${{blocosCardsHtml}}
       </div>`;
     }});
   }});
