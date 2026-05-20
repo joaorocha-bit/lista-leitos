@@ -285,8 +285,6 @@ if df is not None:
 </div>
 
 <script>
-<script>
-// ... (mantenha o seu script JavaScript original aqui, ele funcionará normalmente)
 const DADOS  = {dados_json};
 const CORES  = {cores_json};
 const ORDEM  = {json.dumps(opcoes_unidade)};
