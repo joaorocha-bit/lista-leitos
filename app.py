@@ -60,7 +60,7 @@ if df is not None:
     }
 
     # Listas para os <select> e <datalist>
-    opcoes_unidade       = sorted([u for u in df['UNIDADE'].cat.categories if u in df['UNIDADE'].values])
+    opcoes_unidade = [u for u in df['UNIDADE'].cat.categories if u in df['UNIDADE'].values]
     opcoes_especialidade = sorted(df['ESPECIALIDADE'].dropna().unique().tolist())
     opcoes_tipo          = sorted(df['TIPO'].dropna().unique().tolist())
 
