@@ -348,22 +348,39 @@ function renderizar() {{
           return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{cnt[s]}} (${{pct}}%)</span>`;
         }}).join('');
 
-      const cards = leitos.map(r => {{
-        const cor = CORES[r.STATUS] || '#cbd5e1';
-        return `<div class="card">
-          <div class="leito-num">${{r.PARA}}</div>
-          <div class="leito-tipo">${{r.TIPO}}</div>
-          <div class="status-bar" style="background:${{cor}}"></div>
-        </div>`;
-      }}).join('');
+// Quebra os leitos em blocos para formar múltiplas linhas anexadas
+      let blocosCardsHtml = '<div>'; 
+      const LIMITE = 20; // Aqui você define o limite máximo de leitos por linha
+
+      for (let i = 0; i < leitos.length; i += LIMITE) {
+        // Separa um "pedaço" com no máximo 20 leitos
+        const pedaco = leitos.slice(i, i + LIMITE);
+        
+        const cardsHtml = pedaco.map(r => {
+          const cor = CORES[r.STATUS] || '#cbd5e1';
+          return `<div class="card">
+            <div class="leito-num">${r.PARA}</div>
+            <div class="leito-tipo">${r.TIPO}</div>
+            <div class="status-bar" style="background:${cor}"></div>
+          </div>`;
+        }).join('');
+
+        // Ajuste de padding: Se houver mais de uma linha da mesma área, 
+        // reduzimos o espaçamento vertical para elas ficarem visualmente "juntas".
+        const paddingTop = (i === 0) ? '10px' : '4px';
+        const paddingBottom = (i + LIMITE >= leitos.length) ? '10px' : '4px';
+        
+        blocosCardsHtml += `<div class="wrapper-cards" style="padding-top: ${paddingTop}; padding-bottom: ${paddingBottom};">${cardsHtml}</div>`;
+      }
+      blocosCardsHtml += '</div>';
 
       html += `<div class="linha">
         <div class="coluna-fixa">
-          <div class="unidade-nome">${{unidade}}</div>
-          <div class="especialidade-nome">${{esp}}</div>
-          <div class="stats-container">${{stats}}</div>
+          <div class="unidade-nome">${unidade}</div>
+          <div class="especialidade-nome">${esp}</div>
+          <div class="stats-container">${stats}</div>
         </div>
-        <div class="wrapper-cards">${{cards}}</div>
+        ${blocosCardsHtml}
       </div>`;
     }});
   }});
