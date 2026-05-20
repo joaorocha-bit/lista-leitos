@@ -347,9 +347,9 @@ function renderizar() {{
           return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{cnt[s]}} (${{pct}}%)</span>`;
         }}).join('');
 
-      // ── NOVO BLOCO DO SEU COMPONENTE DE LEITOS (LIMITADO A 25) ──
+      // ── NOVO BLOCO DO SEU COMPONENTE DE LEITOS (LIMITADO A 30) ──
       let blocosCardsHtml = '<div>'; 
-      const LIMITE = 25;
+      const LIMITE = 30;
 
       for (let i = 0; i < leitos.length; i += LIMITE) {{
         const pedaco = leitos.slice(i, i + LIMITE);
