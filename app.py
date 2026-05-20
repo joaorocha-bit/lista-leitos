@@ -276,10 +276,10 @@ if df is not None:
 <div class="legenda-footer">
   <div class="legenda-titulo">Legenda:</div>
   <div class="legenda-itens">
-    <div class="legenda-item"><div class="legenda-cor" style="background:#22c55e"></div> Ativo</div>
-    <div class="legenda-item"><div class="legenda-cor" style="background:#eab308"></div> Manutenção</div>
-    <div class="legenda-item"><div class="legenda-cor" style="background:#ef4444"></div> Inativo</div>
-    <div class="legenda-item"><div class="legenda-cor" style="background:#1c1c1c"></div> Bloqueado</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#22c55e"></div> Adequado</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#eab308"></div> Manutenção s/ Bloqueio</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#ef4444"></div> Manutenção c/ Bloqueio</div>
+    <div class="legenda-item"><div class="legenda-cor" style="background:#1c1c1c"></div> Bloqueio por Reforma</div>
     <div class="legenda-item"><div class="legenda-cor" style="background:#cbd5e1"></div> Não Informado</div>
   </div>
 </div>
