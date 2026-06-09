@@ -6,7 +6,6 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
-# Remove TODA a UI padrão do Streamlit — título, filtros e botão ficam dentro do HTML
 st.markdown("""
     <style>
         .block-container { padding: 0 !important; margin: 0 !important; }
@@ -59,7 +58,6 @@ if df is not None:
         'PRETO':   '#1c1c1c'
     }
 
-    # Listas para os <select> e <datalist>
     opcoes_unidade = [u for u in df['UNIDADE'].cat.categories if u in df['UNIDADE'].values]
     opcoes_especialidade = sorted(df['ESPECIALIDADE'].dropna().unique().tolist())
     opcoes_tipo          = sorted(df['TIPO'].dropna().unique().tolist())
@@ -67,7 +65,6 @@ if df is not None:
     def opts(lista):
         return "".join(f'<option value="{v}">{v}</option>' for v in lista)
 
-    # Serializa os dados para JSON para o filtro em JS
     import json
     registros = df[['UNIDADE','ESPECIALIDADE','PARA','TIPO','STATUS']].copy()
     registros['UNIDADE'] = registros['UNIDADE'].astype(str)
@@ -83,7 +80,6 @@ if df is not None:
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }}
 
-  /* ── Barra de topo ── */
   .topbar {{
     flex-shrink: 0;
     display: flex;
@@ -103,7 +99,6 @@ if df is not None:
   }}
   .sep {{ width: 1px; height: 28px; background: #e2e8f0; flex-shrink: 0; }}
 
-  /* ── Filtros ── */
   .filtros {{
     display: flex;
     align-items: flex-end;
@@ -152,12 +147,11 @@ if df is not None:
   .btn-limpar {{ background: #f1f5f9; color: #475569; }}
   .btn-print  {{ background: #1e293b; color: #fff; }}
 
-  /* ── Painel de leitos ── */
   .scroll-area {{
     flex: 1;
     overflow-y: auto;
     overflow-x: auto;
-    padding-bottom: 10px; /* Espaço para não cobrir o último item com a legenda */
+    padding-bottom: 10px;
   }}
   .container-geral {{ display: inline-block; min-width: 100%; }}
   .linha {{ display: flex; flex-wrap: nowrap; border-bottom: 1px solid #edf2f7; background: #fff; }}
@@ -184,7 +178,6 @@ if df is not None:
   .leito-tipo {{ font-size: 8px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }}
   .status-bar {{ height: 5px; border-radius: 3px; margin: 7px 10% 0; }}
 
-  /* ── LEGENDA NO RODAPÉ ── */
   .legenda-footer {{
     flex-shrink: 0;
     background: #f8fafc;
@@ -224,11 +217,24 @@ if df is not None:
     border-radius: 3px;
   }}
 
+  .linha-total {{
+    background: #f8fafc !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    border-top: 2px solid #e2e8f0 !important;
+    position: sticky;
+    top: 0;
+    z-index: 15;
+  }}
+  .linha-total .coluna-fixa {{
+    background: #f8fafc !important;
+  }}
+
   @media print {{
     body {{ overflow: visible; height: auto; }}
     .topbar, .legenda-footer {{ display: none !important; }}
     .scroll-area {{ overflow: visible; padding-bottom: 0; }}
     .coluna-fixa {{ position: relative !important; box-shadow: none !important; }}
+    .linha-total {{ position: relative !important; }}
     @page {{ size: landscape; margin: 1cm; }}
   }}
 </style>
@@ -311,10 +317,10 @@ function renderizar() {{
   const fTipo     = getSelected('f-tipo');
 
   let filtrado = DADOS.filter(r => {{
-    if (fUnidade.length && !fUnidade.includes(r.UNIDADE))       return false;
-    if (fEsp.length    && !fEsp.includes(r.ESPECIALIDADE))      return false;
+    if (fUnidade.length && !fUnidade.includes(r.UNIDADE))        return false;
+    if (fEsp.length    && !fEsp.includes(r.ESPECIALIDADE))       return false;
     if (fLeito         && !r.PARA.toLowerCase().includes(fLeito)) return false;
-    if (fTipo.length   && !fTipo.includes(r.TIPO))              return false;
+    if (fTipo.length   && !fTipo.includes(r.TIPO))               return false;
     return true;
   }});
 
@@ -347,8 +353,7 @@ function renderizar() {{
           return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{cnt[s]}} (${{pct}}%)</span>`;
         }}).join('');
 
-      // ── NOVO BLOCO DO SEU COMPONENTE DE LEITOS (LIMITADO A 31) ──
-      let blocosCardsHtml = '<div>'; 
+      let blocosCardsHtml = '<div>';
       const LIMITE = 31;
 
       for (let i = 0; i < leitos.length; i += LIMITE) {{
@@ -369,7 +374,6 @@ function renderizar() {{
         blocosCardsHtml += `<div class="wrapper-cards" style="padding-top: ${{paddingTop}}; padding-bottom: ${{paddingBottom}};">${{cardsHtml}}</div>`;
       }}
       blocosCardsHtml += '</div>';
-      // ────────────────────────────────────────────────────────────
 
       html += `<div class="linha">
         <div class="coluna-fixa">
@@ -392,7 +396,8 @@ function renderizar() {{
         const txtColor = ['AMARELO','CINZA'].includes(s) ? '#000' : '#fff';
         return `<span class="stat-item" style="background:${{c}};color:${{txtColor}}">${{contG[s]}} (${{pct}}%)</span>`;
       }}).join('');
-    html += `<div class="linha" style="border-bottom:none">
+
+    const htmlTotal = `<div class="linha linha-total">
       <div class="coluna-fixa">
         <div class="unidade-nome">TOTAL GERAL</div>
         <div class="especialidade-nome">Total: ${{totalG}}</div>
@@ -400,7 +405,10 @@ function renderizar() {{
       </div>
       <div class="wrapper-cards"></div>
     </div>`;
+
+    html = htmlTotal + html;
   }}
+
   document.getElementById('painel').innerHTML = html;
 }}
 renderizar();
