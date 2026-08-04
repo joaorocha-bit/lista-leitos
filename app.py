@@ -11,42 +11,31 @@ st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
 st.markdown("""
     <style>
-        /* 1. Remove padding padrão e empurra o app para o topo absoluto */
+        /* 1. Remove os espaçamentos padrão das margens */
         .block-container { 
-            padding-top: 0 !important; 
-            padding-bottom: 0 !important; 
-            padding-left: 0 !important; 
-            padding-right: 0 !important; 
-            margin-top: 0 !important;
+            padding: 0 !important; 
+            margin: 0 !important; 
         }
         
-        /* 2. Remove o espaço reservado para o header nativo */
+        /* 2. Torna o header transparente e "fantasma" para o mouse (cliques passam direto pro HTML) */
         [data-testid="stHeader"] {
-            height: 0px !important;
-            min-height: 0px !important;
             background: transparent !important;
+            pointer-events: none !important;
         }
 
-        /* 3. Oculta os menus do canto direito (Deploy, 3 pontos) */
+        /* 3. Reativa os cliques EXCLUSIVAMENTE no botão de abrir/fechar a sidebar */
+        [data-testid="stSidebarCollapsedControl"] {
+            pointer-events: auto !important;
+        }
+
+        /* 4. Esconde completamente os ícones do canto direito (Share, 3 pontos) para não ficarem cortados */
         [data-testid="stHeaderActionElements"] { 
             display: none !important; 
         }
-        
-        /* 4. Garante que o conteúdo HTML não tenha margem superior */
-        div.stMarkdown > div[data-testid="stMarkdownContainer"] > p {
-            margin-top: 0 !important;
-        }
 
-        /* 5. Impede o scroll no corpo do app Streamlit (seu HTML já faz isso) */
+        /* 5. Trava a rolagem principal do app */
         .stApp { 
             overflow: hidden; 
-        }
-
-        /* 6. Ajuste opcional: se o botão da sidebar ainda estiver cobrindo
-           algo, podemos diminuir um pouco o tamanho dele */
-        [data-testid="stSidebarCollapsedControl"] button {
-            width: 30px !important;
-            height: 30px !important;
         }
     </style>
 """, unsafe_allow_html=True)
