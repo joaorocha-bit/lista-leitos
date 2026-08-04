@@ -1,11 +1,11 @@
+import time
 import pandas as pd
 import streamlit as st
 import requests
 from io import StringIO
 import streamlit.components.v1 as components
 
-# Coloque aqui a URL que você gerou no Apps Script
-WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxH-GGRAuzyyf9gZ9P04B3imPGSfS-SkBTH2GY1x2-HOuNtkjjc6Xdvj9NSuuNDTQmKeA/exec"
+WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz-fhQLhSTF0lekY8OFkv8TLd1I9g1mRX30_Od3f1lXLxxkriB8F66htjzbmT0GNQISEg/exec"
 
 st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
@@ -15,21 +15,15 @@ st.markdown("""
         section[data-testid="stMain"] > div { padding: 0 !important; }
         .stApp { overflow: hidden; }
 
-        /* Torna o header transparente sem esconder o botão da sidebar */
-        header[data-testid="stHeader"] { 
-            background: transparent !important; 
-        }
-
-        /* Oculta apenas os menus do canto superior direito (Deploy, 3 pontos, etc.) */
-        [data-testid="stHeaderActionElements"] { 
-            display: none !important; 
-        }
+        header[data-testid="stHeader"] { background: transparent !important; }
+        [data-testid="stHeaderActionElements"] { display: none !important; }
     </style>
 """, unsafe_allow_html=True)
 
 def carregar_dados():
     SHEET_ID = "1N0zcHuMz2gmilXlu8bKujkwDggPnTxg8fVp90eWEUw4"
-    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
+    # Burlar cache adicionando timestamp no link
+    URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0&nocache={int(time.time())}"
     try:
         response = requests.get(URL)
         response.raise_for_status()
@@ -61,7 +55,6 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# --- BLALCO DE ALTERAÇÃO DE STATUS (SIDEBAR) ---
 if df is not None:
     with st.sidebar:
         st.subheader("✏️ Alterar Status do Leito")
@@ -73,10 +66,20 @@ if df is not None:
         
         if st.button("Atualizar Status", use_container_width=True):
             payload = {"leito": leito_selecionado, "status": novo_status}
-            res = requests.post(WEBHOOK_URL, json=payload)
-            if res.status_code == 200:
-                st.success(f"Leito {leito_selecionado} atualizado para {novo_status}!")
-                st.rerun()
+            try:
+                res = requests.post(WEBHOOK_URL, json=payload)
+                dados_resp = res.json() if res.status_code == 200 else {}
+                
+                if dados_resp.get("status") == "success":
+                    st.success(f"Leito {leito_selecionado} alterado para {novo_status}!")
+                    time.sleep(1) # Aguarda 1 segundo antes de recarregar
+                    st.rerun()
+                elif dados_resp.get("status") == "not_found":
+                    st.error(f"Erro: {dados_resp.get('message')}")
+                else:
+                    st.error(f"Erro na resposta do Google: {res.text}")
+            except Exception as e:
+                st.error(f"Falha na requisição: {e}")
                 
 # Mantém o restante do seu código HTML/JS exatamente como está...
 if df is not None:
