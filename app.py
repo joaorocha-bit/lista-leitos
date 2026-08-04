@@ -237,7 +237,7 @@ if df is not None:
   .stat-item {{ font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }}
   .wrapper-cards {{ display: flex; flex-wrap: nowrap; gap: 8px; padding: 10px; }}
   
-  /* Card clicável estilo botão sem poluição visual */
+  /* Card clicável estilo botão */
   .card {{
     flex: 0 0 90px; width: 90px;
     border: 1px solid #e2e8f0; border-radius: 6px;
@@ -247,6 +247,18 @@ if df is not None:
     user-select: none;
     transition: transform 0.1s ease, box-shadow 0.1s ease;
   }}
+
+  /* Eleva o Z-INDEX da linha inteira quando um card dentro dela for clicado */
+  .linha:has(.card.active) {{
+    position: relative;
+    z-index: 80 !important;
+  }}
+
+  /* Eleva o Z-INDEX do card ativo por cima dos vizinhos */
+  .card.active {{
+    z-index: 90 !important;
+  }}
+
   .card:hover {{
     transform: translateY(-2px);
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
@@ -269,8 +281,8 @@ if df is not None:
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    z-index: 100;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    z-index: 9999 !important;
     padding: 4px 0;
     text-align: left;
   }}
