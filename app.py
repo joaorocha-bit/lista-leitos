@@ -11,29 +11,30 @@ st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
 st.markdown("""
     <style>
-        /* 1. Remove os espaçamentos padrão das margens */
+        /* Define o espaço superior exato para o cabeçalho do Streamlit e zera as demais margens */
         .block-container { 
-            padding: 0 !important; 
+            padding-top: 3.75rem !important; 
+            padding-bottom: 0 !important; 
+            padding-left: 0 !important; 
+            padding-right: 0 !important; 
             margin: 0 !important; 
         }
         
-        /* 2. Torna o header transparente e "fantasma" para o mouse (cliques passam direto pro HTML) */
+        /* Restaura o cabeçalho nativo do Streamlit com fundo branco fixo */
         [data-testid="stHeader"] {
-            background: transparent !important;
-            pointer-events: none !important;
-        }
-
-        /* 3. Reativa os cliques EXCLUSIVAMENTE no botão de abrir/fechar a sidebar */
-        [data-testid="stSidebarCollapsedControl"] {
+            background-color: #ffffff !important;
+            display: flex !important;
             pointer-events: auto !important;
         }
 
-        /* 4. Esconde completamente os ícones do canto direito (Share, 3 pontos) para não ficarem cortados */
-        [data-testid="stHeaderActionElements"] { 
-            display: none !important; 
+        /* Garante que os botões do menu fiquem sempre visíveis e clicáveis */
+        [data-testid="stHeaderActionElements"],
+        [data-testid="stSidebarCollapsedControl"] {
+            display: flex !important;
+            pointer-events: auto !important;
         }
 
-        /* 5. Trava a rolagem principal do app */
+        /* Mantém a tela sem barras de rolagem duplas */
         .stApp { 
             overflow: hidden; 
         }
