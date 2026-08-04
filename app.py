@@ -4,6 +4,9 @@ import requests
 from io import StringIO
 import streamlit.components.v1 as components
 
+# Coloque aqui a URL que você gerou no Apps Script
+WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxH-GGRAuzyyf9gZ9P04B3imPGSfS-SkBTH2GY1x2-HOuNtkjjc6Xdvj9NSuuNDTQmKeA/exec"
+
 st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
 st.markdown("""
@@ -21,7 +24,7 @@ def carregar_dados():
     try:
         response = requests.get(URL)
         response.raise_for_status()
-        conteudo = response.text.replace('Âº', 'º').replace('âº', 'º')
+        conteudo = response.text.replace('º', 'º').replace('âº', 'º')
         df_raw = pd.read_csv(StringIO(conteudo))
 
         df_final = pd.DataFrame()
@@ -49,6 +52,24 @@ def carregar_dados():
 
 df = carregar_dados()
 
+# --- BLALCO DE ALTERAÇÃO DE STATUS (SIDEBAR) ---
+if df is not None:
+    with st.sidebar:
+        st.subheader("✏️ Alterar Status do Leito")
+        leitos_disponiveis = sorted(df['PARA'].dropna().unique().tolist())
+        leito_selecionado = st.selectbox("Selecione o Leito:", leitos_disponiveis)
+        
+        status_opcoes = ["VERDE", "AMARELO", "VERMELHO", "CINZA", "PRETO"]
+        novo_status = st.selectbox("Novo Status:", status_opcoes)
+        
+        if st.button("Atualizar Status", use_container_width=True):
+            payload = {"leito": leito_selecionado, "status": novo_status}
+            res = requests.post(WEBHOOK_URL, json=payload)
+            if res.status_code == 200:
+                st.success(f"Leito {leito_selecionado} atualizado para {novo_status}!")
+                st.rerun()
+                
+# Mantém o restante do seu código HTML/JS exatamente como está...
 if df is not None:
     cores = {
         'VERDE':   '#22c55e',
