@@ -118,8 +118,6 @@ if df is not None:
             except Exception as e:
                 st.error(f"Falha na requisição: {e}")
                 
-# Mantém o restante do seu código HTML/JS exatamente como está...
-if df is not None:
     cores = {
         'VERDE':   '#22c55e',
         'AMARELO': '#eab308',
@@ -248,6 +246,24 @@ if df is not None:
   .leito-tipo {{ font-size: 8px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }}
   .status-bar {{ height: 5px; border-radius: 3px; margin: 7px 10% 0; }}
 
+  /* Estilo do novo seletor nos cards */
+  .select-status-card {{
+    width: 100%;
+    margin-top: 6px;
+    font-size: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    background: #f8fafc;
+    color: #334155;
+    cursor: pointer;
+    padding: 2px 0;
+    text-align: center;
+  }}
+  .select-status-card:focus {{
+    outline: none;
+    border-color: #94a3b8;
+  }}
+
   .legenda-footer {{
     flex-shrink: 0;
     background: #f8fafc;
@@ -364,6 +380,7 @@ if df is not None:
 const DADOS  = {dados_json};
 const CORES  = {cores_json};
 const ORDEM  = {json.dumps(opcoes_unidade)};
+const WEBHOOK_URL = "{WEBHOOK_URL}";
 
 function getSelected(id) {{
   const sel = document.getElementById(id);
@@ -431,10 +448,17 @@ function renderizar() {{
         
         const cardsHtml = pedaco.map(r => {{
           const cor = CORES[r.STATUS] || '#cbd5e1';
-          return `<div class="card">
+          return `<div class="card" style="border-bottom: 3px solid ${{cor}}; position: relative;">
             <div class="leito-num">${{r.PARA}}</div>
             <div class="leito-tipo">${{r.TIPO}}</div>
-            <div class="status-bar" style="background:${{cor}}"></div>
+            <select class="select-status-card" onchange="atualizarStatusDireto('${{r.PARA}}', this.value)">
+              <option value="" disabled selected>Mudar...</option>
+              <option value="VERDE">🟢 Verde</option>
+              <option value="AMARELO">🟡 Amarelo</option>
+              <option value="VERMELHO">🔴 Vermelho</option>
+              <option value="CINZA">⚪ Cinza</option>
+              <option value="PRETO">⚫ Preto</option>
+            </select>
           </div>`;
         }}).join('');
 
@@ -481,6 +505,39 @@ function renderizar() {{
 
   document.getElementById('painel').innerHTML = html;
 }}
+
+// Função para enviar o webhook diretamente do HTML via JavaScript
+function atualizarStatusDireto(leito, novoStatus) {{
+  if (!novoStatus) return;
+
+  if (!confirm(`Deseja alterar o leito ${{leito}} para ${{novoStatus}}?`)) {{
+    renderizar(); // Reseta o select caso o usuário cancele
+    return;
+  }}
+
+  fetch(WEBHOOK_URL, {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'text/plain;charset=utf-8' }},
+    body: JSON.stringify({{ leito: leito, status: novoStatus }})
+  }})
+  .then(response => response.json())
+  .then(data => {{
+    if (data.status === 'success') {{
+      const registro = DADOS.find(r => String(r.PARA).trim() === String(leito).trim());
+      if (registro) {{
+        registro.STATUS = novoStatus;
+      }}
+      renderizar();
+    }} else {{
+      alert("Erro ao atualizar: " + (data.message || "Tente novamente."));
+    }}
+  }})
+  .catch(error => {{
+    console.error('Erro:', error);
+    alert("Falha na comunicação com o servidor.");
+  }});
+}}
+
 renderizar();
 </script>
 </body>
