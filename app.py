@@ -118,8 +118,6 @@ if df is not None:
             except Exception as e:
                 st.error(f"Falha na requisição: {e}")
                 
-# Mantém o restante do seu código HTML/JS exatamente como está...
-if df is not None:
     cores = {
         'VERDE':   '#22c55e',
         'AMARELO': '#eab308',
@@ -239,14 +237,73 @@ if df is not None:
   .stat-item {{ font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }}
   .wrapper-cards {{ display: flex; flex-wrap: nowrap; gap: 8px; padding: 10px; }}
   
+  /* Card clicável estilo botão sem poluição visual */
   .card {{
     flex: 0 0 90px; width: 90px;
     border: 1px solid #e2e8f0; border-radius: 6px;
     padding: 8px 4px; text-align: center; background: #fff;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
   }}
-  .leito-num {{ font-size: 13px; font-weight: 700; color: #1e293b; }}
-  .leito-tipo {{ font-size: 8px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }}
-  .status-bar {{ height: 5px; border-radius: 3px; margin: 7px 10% 0; }}
+  .card:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  }}
+  .card:active {{
+    transform: translateY(0);
+  }}
+  .leito-num {{ font-size: 13px; font-weight: 700; color: #1e293b; pointer-events: none; }}
+  .leito-tipo {{ font-size: 8px; color: #94a3b8; text-transform: uppercase; margin-top: 2px; pointer-events: none; }}
+  .status-bar {{ height: 5px; border-radius: 3px; margin: 7px 10% 0; pointer-events: none; }}
+
+  /* Menu Suspenso Flutuante (Dropdown) */
+  .dropdown-menu {{
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 130px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+    padding: 4px 0;
+    text-align: left;
+  }}
+  .card.active .dropdown-menu {{
+    display: block;
+  }}
+  .dropdown-header {{
+    font-size: 9px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    padding: 4px 10px 2px;
+    letter-spacing: 0.05em;
+  }}
+  .dropdown-item {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    transition: background 0.15s;
+  }}
+  .dropdown-item:hover {{
+    background: #f1f5f9;
+  }}
+  .dropdown-dot {{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }}
 
   .legenda-footer {{
     flex-shrink: 0;
@@ -364,6 +421,23 @@ if df is not None:
 const DADOS  = {dados_json};
 const CORES  = {cores_json};
 const ORDEM  = {json.dumps(opcoes_unidade)};
+const WEBHOOK_URL = "{WEBHOOK_URL}";
+
+// Fecha o menu suspenso aberto ao clicar em qualquer lugar fora dele
+document.addEventListener('click', function(e) {{
+  if (!e.target.closest('.card')) {{
+    document.querySelectorAll('.card.active').forEach(c => c.classList.remove('active'));
+  }}
+}});
+
+function toggleCardMenu(event, cardElement) {{
+  event.stopPropagation();
+  const estaAtivo = cardElement.classList.contains('active');
+  document.querySelectorAll('.card.active').forEach(c => c.classList.remove('active'));
+  if (!estaAtivo) {{
+    cardElement.classList.add('active');
+  }}
+}}
 
 function getSelected(id) {{
   const sel = document.getElementById(id);
@@ -431,10 +505,30 @@ function renderizar() {{
         
         const cardsHtml = pedaco.map(r => {{
           const cor = CORES[r.STATUS] || '#cbd5e1';
-          return `<div class="card">
+          return `<div class="card" onclick="toggleCardMenu(event, this)">
             <div class="leito-num">${{r.PARA}}</div>
             <div class="leito-tipo">${{r.TIPO}}</div>
             <div class="status-bar" style="background:${{cor}}"></div>
+            
+            <!-- Menu Suspenso ao clicar no Card -->
+            <div class="dropdown-menu">
+              <div class="dropdown-header">Alterar Status</div>
+              <div class="dropdown-item" onclick="selecionarStatusDirect(event, '${{r.PARA}}', 'VERDE')">
+                <div class="dropdown-dot" style="background:#22c55e"></div> Verde
+              </div>
+              <div class="dropdown-item" onclick="selecionarStatusDirect(event, '${{r.PARA}}', 'AMARELO')">
+                <div class="dropdown-dot" style="background:#eab308"></div> Amarelo
+              </div>
+              <div class="dropdown-item" onclick="selecionarStatusDirect(event, '${{r.PARA}}', 'VERMELHO')">
+                <div class="dropdown-dot" style="background:#ef4444"></div> Vermelho
+              </div>
+              <div class="dropdown-item" onclick="selecionarStatusDirect(event, '${{r.PARA}}', 'CINZA')">
+                <div class="dropdown-dot" style="background:#cbd5e1"></div> Cinza
+              </div>
+              <div class="dropdown-item" onclick="selecionarStatusDirect(event, '${{r.PARA}}', 'PRETO')">
+                <div class="dropdown-dot" style="background:#1c1c1c"></div> Preto
+              </div>
+            </div>
           </div>`;
         }}).join('');
 
@@ -481,6 +575,34 @@ function renderizar() {{
 
   document.getElementById('painel').innerHTML = html;
 }}
+
+function selecionarStatusDirect(event, leito, novoStatus) {{
+  event.stopPropagation(); // Impede fechar/reabrir o card no mesmo clique
+  document.querySelectorAll('.card.active').forEach(c => c.classList.remove('active'));
+
+  fetch(WEBHOOK_URL, {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'text/plain;charset=utf-8' }},
+    body: JSON.stringify({{ leito: leito, status: novoStatus }})
+  }})
+  .then(response => response.json())
+  .then(data => {{
+    if (data.status === 'success') {{
+      const registro = DADOS.find(r => String(r.PARA).trim() === String(leito).trim());
+      if (registro) {{
+        registro.STATUS = novoStatus;
+      }}
+      renderizar();
+    }} else {{
+      alert("Erro ao atualizar: " + (data.message || "Tente novamente."));
+    }}
+  }})
+  .catch(error => {{
+    console.error('Erro:', error);
+    alert("Falha na comunicação com o servidor.");
+  }});
+}}
+
 renderizar();
 </script>
 </body>
