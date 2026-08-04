@@ -82,7 +82,7 @@ if df is not None:
         
         # 1. Seleção do Setor / Unidade
         unidades_disponiveis = [u for u in df['UNIDADE'].cat.categories if u in df['UNIDADE'].values]
-        unidade_selecionada = st.selectbox("1. Selecione o Setor / Unidade:", unidades_disponiveis)
+        unidade_selecionada = st.selectbox("1. Selecione a Unidade:", unidades_disponiveis)
         
         # 2. Filtragem dos leitos pertencentes APENAS ao setor selecionado
         leitos_do_setor = (
