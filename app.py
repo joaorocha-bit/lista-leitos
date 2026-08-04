@@ -79,12 +79,28 @@ df = carregar_dados()
 if df is not None:
     with st.sidebar:
         st.subheader("✏️ Alterar Status do Leito")
-        leitos_disponiveis = sorted(df['PARA'].dropna().unique().tolist())
-        leito_selecionado = st.selectbox("Selecione o Leito:", leitos_disponiveis)
         
+        # 1. Seleção do Setor / Unidade
+        unidades_disponiveis = [u for u in df['UNIDADE'].cat.categories if u in df['UNIDADE'].values]
+        unidade_selecionada = st.selectbox("1. Selecione o Setor / Unidade:", unidades_disponiveis)
+        
+        # 2. Filtragem dos leitos pertencentes APENAS ao setor selecionado
+        leitos_do_setor = (
+            df[df['UNIDADE'] == unidade_selecionada]['PARA']
+            .dropna()
+            .unique()
+            .tolist()
+        )
+        leitos_disponiveis = sorted(leitos_do_setor)
+        
+        # 3. Seleção do Leito (recarrega dinamicamente com base no setor)
+        leito_selecionado = st.selectbox("2. Selecione o Leito:", leitos_disponiveis)
+        
+        # 4. Seleção do Novo Status
         status_opcoes = ["VERDE", "AMARELO", "VERMELHO", "CINZA", "PRETO"]
-        novo_status = st.selectbox("Novo Status:", status_opcoes)
+        novo_status = st.selectbox("3. Novo Status:", status_opcoes)
         
+        # 5. Botão de Envio
         if st.button("Atualizar Status", use_container_width=True):
             payload = {"leito": leito_selecionado, "status": novo_status}
             try:
@@ -92,8 +108,8 @@ if df is not None:
                 dados_resp = res.json() if res.status_code == 200 else {}
                 
                 if dados_resp.get("status") == "success":
-                    st.success(f"Leito {leito_selecionado} alterado para {novo_status}!")
-                    time.sleep(1) # Aguarda 1 segundo antes de recarregar
+                    st.success(f"Leito {leito_selecionado} ({unidade_selecionada}) alterado para {novo_status}!")
+                    time.sleep(1)
                     st.rerun()
                 elif dados_resp.get("status") == "not_found":
                     st.error(f"Erro: {dados_resp.get('message')}")
