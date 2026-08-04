@@ -129,6 +129,7 @@ if df is not None:
     opcoes_unidade = [u for u in df['UNIDADE'].cat.categories if u in df['UNIDADE'].values]
     opcoes_especialidade = sorted(df['ESPECIALIDADE'].dropna().unique().tolist())
     opcoes_tipo          = sorted(df['TIPO'].dropna().unique().tolist())
+    opcoes_status        = ["VERDE", "AMARELO", "VERMELHO", "CINZA", "PRETO"]
 
     def opts(lista):
         return "".join(f'<option value="{v}">{v}</option>' for v in lista)
@@ -409,6 +410,13 @@ if df is not None:
         {opts(opcoes_tipo)}
       </select>
     </div>
+    <div class="filtro-group fg-status">
+      <label>Status</label>
+      <select id="f-status" multiple size="1" onchange="renderizar()">
+        <option value="">Todos</option>
+        {opts(opcoes_status)}
+      </select>
+    </div>
   </div>
   <button class="btn-limpar" onclick="limpar()">✕ Limpar</button>
   <button class="btn-print"  onclick="window.print()">🖨️ Imprimir</button>
@@ -457,7 +465,7 @@ function getSelected(id) {{
 }}
 
 function limpar() {{
-  ['f-unidade','f-especialidade','f-tipo'].forEach(id => {{
+  ['f-unidade','f-especialidade','f-tipo','f-status'].forEach(id => {{
     const sel = document.getElementById(id);
     Array.from(sel.options).forEach(o => o.selected = false);
     sel.options[0].selected = true;
@@ -471,12 +479,14 @@ function renderizar() {{
   const fEsp      = getSelected('f-especialidade');
   const fLeito    = document.getElementById('f-leito').value.trim().toLowerCase();
   const fTipo     = getSelected('f-tipo');
+  const fStatus   = getSelected('f-status');
 
   let filtrado = DADOS.filter(r => {{
     if (fUnidade.length && !fUnidade.includes(r.UNIDADE))        return false;
     if (fEsp.length    && !fEsp.includes(r.ESPECIALIDADE))       return false;
     if (fLeito         && !r.PARA.toLowerCase().includes(fLeito)) return false;
     if (fTipo.length   && !fTipo.includes(r.TIPO))               return false;
+    if (fStatus.length && !fStatus.includes(r.STATUS))             return false;
     return true;
   }});
 
