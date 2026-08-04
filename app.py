@@ -7,27 +7,22 @@ import streamlit.components.v1 as components
 # Coloque aqui a URL que você gerou no Apps Script
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxH-GGRAuzyyf9gZ9P04B3imPGSfS-SkBTH2GY1x2-HOuNtkjjc6Xdvj9NSuuNDTQmKeA/exec"
 
-st.set_page_config(
-    page_title="Gestão de Leitos", 
-    layout="wide",
-    initial_sidebar_state="expanded"  # Força a sidebar a iniciar aberta
-)
+st.set_page_config(page_title="Gestão de Leitos", layout="wide")
 
 st.markdown("""
     <style>
         .block-container { padding: 0 !important; margin: 0 !important; }
         section[data-testid="stMain"] > div { padding: 0 !important; }
         .stApp { overflow: hidden; }
-        
-        /* Oculta o botão de fechar a sidebar para evitar que seja escondida por engano */
-        [data-testid="stSidebarCollapseButton"] { display: none !important; }
-        
-        /* Garante que o botão de reabrir fique visível caso esteja fechada */
-        [data-testid="stSidebarCollapsedControl"] {
-            display: flex !important;
-            z-index: 100 !important;
-            background-color: #fff !important;
-            border-radius: 4px;
+
+        /* Torna o header transparente sem esconder o botão da sidebar */
+        header[data-testid="stHeader"] { 
+            background: transparent !important; 
+        }
+
+        /* Oculta apenas os menus do canto superior direito (Deploy, 3 pontos, etc.) */
+        [data-testid="stHeaderActionElements"] { 
+            display: none !important; 
         }
     </style>
 """, unsafe_allow_html=True)
